@@ -232,7 +232,7 @@ def model_direct_draw(cube):
                      'prob_detections': prob_detections[0:num_samples]}
 
     transits = pd.DataFrame(transits_dict)    
-    transits.to_csv('sims/transits_direct_draw.csv')
+    transits.to_csv('/blue/sarahballard/c.lam/sculpting/transits/transits'+str(i)+'.csv')
     
     # formerly normalized by total of k, but now I care about zero-counts, so no need to normalize anymore
     #lam = transits.transit_multiplicity.value_counts()
