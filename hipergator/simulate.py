@@ -160,7 +160,7 @@ def model_direct_draw(cube):
     intacts = 0
     
     # draw ~20000 systems
-    num_samples = 10
+    num_samples = len(berger_kepler)
     for i in range(len(berger_kepler[0:num_samples])):
     #for i in range(10):
         # star
@@ -232,7 +232,6 @@ def model_direct_draw(cube):
                      'prob_detections': prob_detections[0:num_samples]}
 
     transits = pd.DataFrame(transits_dict)    
-    transits.to_csv('/blue/sarahballard/c.lam/sculpting/transits/transits'+str(i)+'.csv')
     
     # formerly normalized by total of k, but now I care about zero-counts, so no need to normalize anymore
     #lam = transits.transit_multiplicity.value_counts()
@@ -249,9 +248,8 @@ def loglike_direct_draw(cube, ndim, nparams):
 
     Returns: Poisson log-likelihood
     """
-
     # retrieve prior cube and feed prior-normalized hypercube into model to generate transit multiplicities
-    lam, _, intact_fractions = model_direct_draw(cube)
+    lam, transits, intact_fractions = model_direct_draw(cube)
     #print("MODEL: ", lam)
     #print("DATA: ", k) # from Berger et al 2020 crossmatched with Gaia via Bedell's kepler-gaia.fun
     
@@ -260,7 +258,7 @@ def loglike_direct_draw(cube, ndim, nparams):
     term3 = -np.sum([lgamma(kth + 1) for kth in k])
     poisson_loglikelihood = term1 + term2 + term3
     #print("POISSON: ", poisson_loglikelihood)
-    return poisson_loglikelihood, lam, intact_fractions
+    return poisson_loglikelihood, lam, transits, intact_fractions
 
 def transit_duration(P, r_star, r_planet, b, a, inc): # Winn 2011 Eqn 14
     #print(P, r_star, r_planet, b, a, inc)
@@ -349,9 +347,9 @@ for gi_m in range(11):
         temp_intact_fracs = []
         cube = [random.uniform(0,1), random.uniform(0,1)] # instantiate cube
         cube = prior_grid(cube, ndim, nparams, gi_m, gi_b) # move to new position on cube
-        for i in range(10): # ideally should be more
+        for i in range(100): # ideally should be more
             # calculate logL by comparing model(cube) and k
-            logL, lam, intact_fractions = loglike_direct_draw(cube, ndim, nparams) 
+            logL, lam, transits, intact_fractions = loglike_direct_draw(cube, ndim, nparams) 
             lam = lam.to_list()
             temp_lams.append(lam)
             temp_logLs.append(logL)
@@ -362,6 +360,7 @@ for gi_m in range(11):
         lams.append(temp_lams)
         logLs.append(temp_logLs)
         intact_fracs.append(temp_intact_fracs)
+        transits.to_csv('/blue/sarahballard/c.lam/sculpting/transits/transits'+str(gi_m)+'_'+str(gi_b)+'.csv')
         
 df = pd.DataFrame({'ms': ms, 'bs': bs, 'intact_fracs': intact_fracs, 'logLs': logLs, 'lams': lams})
 print(df)
