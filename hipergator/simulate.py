@@ -233,12 +233,11 @@ def model_direct_draw(cube):
 
     transits = pd.DataFrame(transits_dict)    
     
-    # formerly normalized by total of k, but now I care about zero-counts, so no need to normalize anymore
     #lam = transits.transit_multiplicity.value_counts()
     #lam = transits.loc[transits.transit_multiplicity > 0].transit_multiplicity.value_counts() * (np.sum(k_old)/len(transits.loc[transits.transit_multiplicity > 0]))
-    lam = transits.loc[transits.transit_multiplicity > 0].transit_multiplicity.value_counts() * (len(berger_kepler)/num_samples) # scale up to full counts of k
-    #print(lam)
-    #print(transits.transit_multiplicity.value_counts())
+    #lam = transits.loc[transits.transit_multiplicity > 0].transit_multiplicity.value_counts() * (len(berger_kepler)/num_samples) # scale up to full counts of k
+    lam = transits.transit_multiplicity.value_counts().reindex(transits.index[0:6], # to deal w/zero value gaps 
+                                                               fill_value=0) * (len(berger_kepler)/num_samples)
     
     return lam, transits, intact_fractions
 
@@ -259,6 +258,38 @@ def loglike_direct_draw(cube, ndim, nparams):
     poisson_loglikelihood = term1 + term2 + term3
     #print("POISSON: ", poisson_loglikelihood)
     return poisson_loglikelihood, lam, transits, intact_fractions
+
+def loglike_direct_draw_better(cube, ndim, nparams, k):
+    """
+    Run model per hyperparam draw and calculate Poisson log likelihood
+    Params: 
+    - cube: hyperparam cube of slope and intercept
+    - ndim: number of dimensions
+    - nparams: number of parameters
+    - k: from Berger et al 2020
+    Returns: Poisson log-likelihood
+    """
+
+    # retrieve prior cube and feed prior-normalized hypercube into model to generate transit multiplicities
+    lam, transits, intact_fractions = model_direct_draw(cube)
+    poisson_loglikelihood = better_loglike(lam, k)
+    
+    return poisson_loglikelihood, lam, transits, intact_fractions
+
+def better_loglike(lam, k):
+    """
+    Calculate Poisson log likelihood
+    """
+    
+    logL = []
+    print(lam)
+    for i in range(len(lam)):
+        term3 = -lgamma(k[i]+1)
+        #print(lam[i], k[i])
+        term2 = -lam[i]
+        term1 = k[i]*np.log(lam[i])
+        logL.append(term1+term2+term3)
+    return np.sum(logL)
 
 def transit_duration(P, r_star, r_planet, b, a, inc): # Winn 2011 Eqn 14
     #print(P, r_star, r_planet, b, a, inc)
@@ -349,7 +380,8 @@ for gi_m in range(11):
         cube = prior_grid(cube, ndim, nparams, gi_m, gi_b) # move to new position on cube
         for i in range(100): # ideally should be more
             # calculate logL by comparing model(cube) and k
-            logL, lam, transits, intact_fractions = loglike_direct_draw(cube, ndim, nparams) 
+            logL, lam, transits, intact_fractions = loglike_direct_draw_better(cube, ndim, nparams, k) 
+
             lam = lam.to_list()
             temp_lams.append(lam)
             temp_logLs.append(logL)
