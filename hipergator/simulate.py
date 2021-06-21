@@ -24,7 +24,8 @@ k = pd.Series([len(berger_kepler)-np.sum(k), 244, 51, 12, 8, 1])
 
 def sim_transits_new(r_star, m_star, num_planets, mu, sigma, r_planet, age_star, planets_per_case2,
     planets_a_case2, inclinations, inclinations_degrees, impact_parameters, transit_statuses,
-    transit_status1, transit_status2, transit_multiplicities, tdurs, cdpp, sns, prob_detections):
+    transit_status1, transit_status2, transit_multiplicities, tdurs, cdpp, sns, prob_detections, 
+    geometric_transit_multiplicity):
     """
     In a loop through Kepler data, keep info on stellar radius, age, and CDPP. 
     But we sample number of planets and their periods, draw midplane for the system, 
@@ -51,6 +52,7 @@ def sim_transits_new(r_star, m_star, num_planets, mu, sigma, r_planet, age_star,
     impact_parameters
     transit_status
     transit_multiplicities
+    geometric_transit_multiplicity
     tdurs
     sns (signal noise ratios)
     
@@ -58,7 +60,7 @@ def sim_transits_new(r_star, m_star, num_planets, mu, sigma, r_planet, age_star,
     -------
     None: populates a bunch of different lists set up before the loop in which function is called,
     including those for inclination, period, semi-major axis, impact parameter, transit duration,
-    transit status, transit multiplicity, S/N, and Fressin detection probabilities
+    transit status, probabilistic and geometric transit multiplicity, S/N, and Fressin detection probabilities
     
     """
 
@@ -117,14 +119,15 @@ def sim_transits_new(r_star, m_star, num_planets, mu, sigma, r_planet, age_star,
     prob_detection = np.where(prob_detection > 1, 1, prob_detection) # replace probs > 1 with just 1
     prob_detections.append(prob_detection)
     
-    # sample transit status based on Fressin detection probability
+    # sample transit status and multiplicity based on Fressin detection probability
     #transit_status = [ts1_elt * ts2_elt for ts1_elt, ts2_elt in zip(ts1, ts2)]
     transit_status = [np.random.choice([1, 0], p=[pd, 1-pd]) for pd in prob_detection]
     transit_statuses.append(transit_status)
-    
-    # transit check based on solely on impact parameters, ie. solely on geometry, not noise limit
     transit_multiplicities.append(len([ts for ts in transit_status if ts == 1]))
     #transit_multiplicities.append(len([param for param in b if np.abs(param) <= 1.]))
+
+    # transit check based on solely on impact parameters, ie. solely on geometry, not noise limit
+    geometric_transit_multiplicity.append(len([t for t in ts1 if t == 1]))
 
 def model_direct_draw(cube):
     """
@@ -150,6 +153,7 @@ def model_direct_draw(cube):
     transit_status2 = []
     transit_statuses = []
     transit_multiplicities = []
+    geometric_transit_multiplicity = []
     tdurs = []
     jmags = []
     sns = []
@@ -160,7 +164,8 @@ def model_direct_draw(cube):
     intacts = 0
     
     # draw ~20000 systems
-    num_samples = len(berger_kepler)
+    #num_samples = len(berger_kepler)
+    num_samples = 100
     for i in range(len(berger_kepler[0:num_samples])):
     #for i in range(10):
         # star
@@ -192,7 +197,8 @@ def model_direct_draw(cube):
                              impact_parameters = impact_parameters, transit_statuses = transit_statuses, 
                              transit_status1 = transit_status1, transit_status2 = transit_status2, 
                              transit_multiplicities = transit_multiplicities, tdurs = tdurs,
-                             cdpp = cdpp, sns = sns, prob_detections = prob_detections)
+                             cdpp = cdpp, sns = sns, prob_detections = prob_detections, 
+                             geometric_transit_multiplicity = geometric_transit_multiplicity)
 
         elif intact_flag == 'disrupted':
             # old system has 1 or 2 planets
@@ -206,7 +212,8 @@ def model_direct_draw(cube):
                              impact_parameters = impact_parameters, transit_statuses = transit_statuses, 
                              transit_status1 = transit_status1, transit_status2 = transit_status2,
                              transit_multiplicities = transit_multiplicities, tdurs = tdurs,
-                             cdpp = cdpp, sns = sns, prob_detections = prob_detections)
+                             cdpp = cdpp, sns = sns, prob_detections = prob_detections,
+                             geometric_transit_multiplicity = geometric_transit_multiplicity)
 
     midplanes = np.concatenate(midplanes, axis=0) # turn list of lists of one into regular list
     intact_fractions = intacts/num_samples
@@ -226,6 +233,7 @@ def model_direct_draw(cube):
     'semi_major_axes': planets_a_case2[0:num_samples], 'midplane': midplanes[0:num_samples], 'midplane_degrees': midplanes_degrees[0:num_samples],
                      'planet_inclinations': inclinations[0:num_samples], 'planet_inclinations_degrees': inclinations_degrees[0:num_samples],
                      'impact_parameters': impact_parameters[0:num_samples], 'transit_status': transit_statuses[0:num_samples], 
+                     'geometric_transit': transit_status1[0:num_samples], 'geometric_transit_multiplicity': geometric_transit_multiplicity[0:num_samples],
                      'transit_multiplicity': transit_multiplicities[0:num_samples], 'kepid': kepids[0:num_samples],
                      'y_intercept': b, 'slope': m, 'transit_duration': tdurs[0:num_samples], 
                      '6hr_cdpp': berger_kepler.rrmscdpp06p0[0:num_samples], 'signal_noise': sns[0:num_samples],
@@ -238,8 +246,10 @@ def model_direct_draw(cube):
     #lam = transits.loc[transits.transit_multiplicity > 0].transit_multiplicity.value_counts() * (len(berger_kepler)/num_samples) # scale up to full counts of k
     lam = transits.transit_multiplicity.value_counts().reindex(transits.index[0:6], # to deal w/zero value gaps 
                                                                fill_value=0) * (len(berger_kepler)/num_samples)
-    
-    return lam, transits, intact_fractions
+    geom_lam = transits.geometric_transit_multiplicity.value_counts().reindex(transits.index[0:6], # to deal w/zero value gaps 
+                                                               fill_value=0) * (len(berger_kepler)/num_samples)
+
+    return lam, geom_lam, transits, intact_fractions
 
 def loglike_direct_draw(cube, ndim, nparams):
     """
@@ -271,10 +281,13 @@ def loglike_direct_draw_better(cube, ndim, nparams, k):
     """
 
     # retrieve prior cube and feed prior-normalized hypercube into model to generate transit multiplicities
-    lam, transits, intact_fractions = model_direct_draw(cube)
-    poisson_loglikelihood = better_loglike(lam, k)
+    lam, geom_lam, transits, intact_fractions = model_direct_draw(cube)
+    lam = [1e-12 if x==0.0 else x for x in lam] # avoid -infs in logL by turning 0 lams to 1e-12
+    geom_lam = [1e-12 if x==0.0 else x for x in geom_lam] # ditto
+    logL = better_loglike(lam, k)
+    geom_logL = better_loglike(geom_lam, k)
     
-    return poisson_loglikelihood, lam, transits, intact_fractions
+    return logL, lam, geom_lam, geom_logL, transits, intact_fractions
 
 def better_loglike(lam, k):
     """
@@ -282,7 +295,7 @@ def better_loglike(lam, k):
     """
     
     logL = []
-    print(lam)
+    #print(lam)
     for i in range(len(lam)):
         term3 = -lgamma(k[i]+1)
         #print(lam[i], k[i])
@@ -368,6 +381,8 @@ ndim = 2
 nparams = 2
 lams = []
 logLs = []
+geometric_lams = []
+geometric_logLs = []
 intact_fracs = []
 ms = []
 bs = []
@@ -375,26 +390,32 @@ for gi_m in range(11):
     for gi_b in range(11):
         temp_logLs = []
         temp_lams = []
+        temp_geom_lams = []
+        temp_geom_logLs = []
         temp_intact_fracs = []
         cube = [random.uniform(0,1), random.uniform(0,1)] # instantiate cube
         cube = prior_grid(cube, ndim, nparams, gi_m, gi_b) # move to new position on cube
-        for i in range(100): # ideally should be more
+        for i in range(5): # ideally should be more
             # calculate logL by comparing model(cube) and k
-            logL, lam, transits, intact_fractions = loglike_direct_draw_better(cube, ndim, nparams, k) 
-
-            lam = lam.to_list()
+            logL, lam, geom_lam, geom_logL, transits, intact_fractions = loglike_direct_draw_better(cube, ndim, nparams, k) 
+            #lam = lam.to_list()
             temp_lams.append(lam)
             temp_logLs.append(logL)
+            temp_geom_lams.append(geom_lam)
+            temp_geom_logLs.append(geom_logL)
             temp_intact_fracs.append(intact_fractions)
-            
+            transits.to_csv('/blue/sarahballard/c.lam/sculpting/transits/transits'+str(gi_m)+'_'+str(gi_b)+'_'+str(i)+'.csv')
+
         ms.append(round(cube[0],1))
         bs.append(round(cube[1],1))
         lams.append(temp_lams)
+        geometric_lams.append(temp_geom_lams)
+        geometric_logLs.append(temp_geom_logLs)
         logLs.append(temp_logLs)
         intact_fracs.append(temp_intact_fracs)
-        transits.to_csv('/blue/sarahballard/c.lam/sculpting/transits/transits'+str(gi_m)+'_'+str(gi_b)+'.csv')
         
-df = pd.DataFrame({'ms': ms, 'bs': bs, 'intact_fracs': intact_fracs, 'logLs': logLs, 'lams': lams})
+df = pd.DataFrame({'ms': ms, 'bs': bs, 'intact_fracs': intact_fracs, 'logLs': logLs, 'lams': lams, 
+    'geometric_lams': geometric_lams, 'geometric_logLs': geometric_logLs})
 print(df)
 #lams.to_csv('lams_cands.csv', index=False)
-df.to_csv('/blue/sarahballard/c.lam/sculpting/simulations.csv', index=False, sep='\t')
+df.to_csv('/blue/sarahballard/c.lam/sculpting/simulations_w_geometric_transits.csv', index=False, sep='\t')
