@@ -164,8 +164,8 @@ def model_direct_draw(cube):
     intacts = 0
     
     # draw ~20000 systems
-    #num_samples = len(berger_kepler)
-    num_samples = 100
+    num_samples = len(berger_kepler)
+    #num_samples = 100
     for i in range(len(berger_kepler[0:num_samples])):
     #for i in range(10):
         # star
@@ -395,7 +395,7 @@ for gi_m in range(11):
         temp_intact_fracs = []
         cube = [random.uniform(0,1), random.uniform(0,1)] # instantiate cube
         cube = prior_grid(cube, ndim, nparams, gi_m, gi_b) # move to new position on cube
-        for i in range(5): # ideally should be more
+        for i in range(100): # ideally should be more
             # calculate logL by comparing model(cube) and k
             logL, lam, geom_lam, geom_logL, transits, intact_fractions = loglike_direct_draw_better(cube, ndim, nparams, k) 
             #lam = lam.to_list()
