@@ -129,6 +129,19 @@ def sim_transits_new(r_star, m_star, num_planets, mu, sigma, r_planet, age_star,
     # transit check based on solely on impact parameters, ie. solely on geometry, not noise limit
     geometric_transit_multiplicity.append(len([t for t in ts1 if t == 1]))
 
+def compute_prob(x, m, b, cutoff): # adapted from Ballard et al in prep
+    #y = []
+    cutoff = 0 # placeholder
+    if x <= 1e8: # assume any decay starts at 1e8 yrs
+        y = b
+    elif x > 1e8:
+        #print(np.log10(x), m, b)
+        y = b + m*(x-8) # offset by 1e8 yrs to get max(t=index) = 1
+        if y < 0: # handle negative probabilities
+            y = 0
+            
+    return y
+
 def model_direct_draw(cube):
     """
     Take prior and draw systems out of Kepler data 
@@ -165,7 +178,7 @@ def model_direct_draw(cube):
     
     # draw ~20000 systems
     num_samples = len(berger_kepler)
-    #num_samples = 100
+    num_samples = 100
     for i in range(len(berger_kepler[0:num_samples])):
     #for i in range(10):
         ### star ###
@@ -191,11 +204,15 @@ def model_direct_draw(cube):
             prob = m * cutoff + b 
         """
 
+        """
         # not including piecewise/cutoff model
         prob = m * age_star + b
 
         if prob < 0.: # don't allow negative probabilities
             prob = 0.
+        """
+
+        prob = compute_prob(age_star, m, b, cutoff)
         intact_flag = np.random.choice(['intact', 'disrupted'], p=[prob, 1-prob])
         if intact_flag == 'intact':
             intacts += 1
@@ -415,10 +432,11 @@ def prior_grid_logslope(cube, ndim, nparams, gi_m, gi_b, gi_c):
     gi_b: grid index on b axis
     gi_c: grid index for cutoff time axis
     """
-    cube[0] = -1e-9*np.logspace(8,10,11)[gi_m] # convert from year to Gyr
+    #cube[0] = -1e-9*np.logspace(8,10,11)[gi_m] # convert from year to Gyr
+    cube[0] = np.linspace(-2,0,11)[gi_m] 
     cube[1] = np.linspace(0,1,11)[gi_b]
     #cube[2] = np.logspace(1e8,1e10,11)
-    cube[2] = 1e-9*np.logspace(8,10,11)[gi_c] # convert from year to Gyr 
+    cube[2] = 1e-9*np.logspace(8,10,11)[gi_c] # convert from year to Gyr; placholder
     return cube
 
 def model_log_params(cube):
@@ -461,7 +479,7 @@ def model_log_params(cube):
     
     # draw ~20000 systems
     num_samples = len(berger_kepler)
-    num_samples = 100
+    #num_samples = 100
     for i in range(len(berger_kepler[0:num_samples])):
     #for i in range(10):
         # star
@@ -588,6 +606,16 @@ for gi_m in range(11):
         print(cube)
         logL, lam, geom_lam, geom_logL, transits, intact_fractions = loglike_direct_draw_better(cube, ndim, nparams, k)
 """
+"""
+for gi_m in range(11):
+    for gi_b in range(11):
+        cube = [0,0,0]
+        gi_c = 0
+        ndim = 3
+        nparams = 3
+        cube = prior_grid_logslope(cube, ndim, nparams, gi_m, gi_b, gi_c)
+        print(cube)
+"""    
 for gi_m in range(11):
     for gi_b in range(11):
         gi_c = 0
@@ -608,7 +636,7 @@ for gi_m in range(11):
             temp_geom_lams.append(geom_lam)
             temp_geom_logLs.append(geom_logL)
             temp_intact_fracs.append(intact_fractions)
-            transits.to_csv('/blue/sarahballard/c.lam/sculpting/transits_logslope/transits'+str(gi_m)+'_'+str(gi_b)+'_'+str(i)+'.csv')
+            transits.to_csv('/blue/sarahballard/c.lam/sculpting/transits_logtime/transits'+str(gi_m)+'_'+str(gi_b)+'_'+str(i)+'.csv')
 
         ms.append(round(cube[0],1))
         bs.append(round(cube[1],1))
@@ -620,7 +648,7 @@ for gi_m in range(11):
         intact_fracs.append(temp_intact_fracs)
         
 df = pd.DataFrame({'ms': ms, 'bs': bs, 'intact_fracs': intact_fracs, 'logLs': logLs, 'lams': lams, 
-    'geometric_lams': geometric_lams, 'geometric_logLs': geometric_logLs})
+    'geometric_lams': geometric_lams, 'geometric_logLs': geometric_logLs, 'cutoffs': cutoffs})
 print(df)
 #lams.to_csv('lams_cands.csv', index=False)
-df.to_csv('/blue/sarahballard/c.lam/sculpting/simulations_w_logslope.csv', index=False, sep='\t')
+df.to_csv('/blue/sarahballard/c.lam/sculpting/simulations_logtime.csv', index=False, sep='\t')
