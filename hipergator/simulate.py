@@ -132,13 +132,30 @@ def sim_transits_new(r_star, m_star, num_planets, mu, sigma, r_planet, age_star,
 def compute_prob(x, m, b, cutoff): # adapted from Ballard et al in prep
     #y = []
     cutoff = 0 # placeholder
-    if x <= 1e8: # assume any decay starts at 1e8 yrs
+    if x <= 0.1: # assume any decay starts at 1e8 yrs
         y = b
-    elif x > 1e8:
+    elif x > 0.1:
         #print(np.log10(x), m, b)
-        y = b + m*(x-8) # offset by 1e8 yrs to get max(t=index) = 1
+        y = b + m*(x-0.1) # offset by 1e8 yrs to get max(t=index) = 1
         if y < 0: # handle negative probabilities
             y = 0
+        elif y > 1: # handle cases where 1-y < 0
+            y = 1
+            
+    return y
+
+def compute_prob2(x, m, b, cutoff): # adapted from Ballard et al in prep, log version
+    cutoff = 0 # placeholder
+    x = x*1e9
+    if x <= 1e8:
+        y = b
+    elif x > 1e8:
+        #print(np.log10(x_elt), m, b)
+        y = b + m*(np.log10(x)-8)
+        if y < 0: # handle negative probabilities
+            y = 0
+        elif y > 1:
+            y = 1
             
     return y
 
@@ -174,11 +191,12 @@ def model_direct_draw(cube):
     xi = []
     xi_old = []
     xi_young = []
+    prob_intacts = []
     intacts = 0
     
     # draw ~20000 systems
     num_samples = len(berger_kepler)
-    num_samples = 100
+    #num_samples = 100
     for i in range(len(berger_kepler[0:num_samples])):
     #for i in range(10):
         ### star ###
@@ -212,7 +230,8 @@ def model_direct_draw(cube):
             prob = 0.
         """
 
-        prob = compute_prob(age_star, m, b, cutoff)
+        prob = compute_prob2(age_star, m, b, cutoff)
+        prob_intacts.append(prob)
         intact_flag = np.random.choice(['intact', 'disrupted'], p=[prob, 1-prob])
         if intact_flag == 'intact':
             intacts += 1
@@ -267,7 +286,7 @@ def model_direct_draw(cube):
                      'transit_multiplicity': transit_multiplicities[0:num_samples], 'kepid': kepids[0:num_samples],
                      'y_intercept': b, 'slope': m, 'transit_duration': tdurs[0:num_samples], 
                      '6hr_cdpp': berger_kepler.rrmscdpp06p0[0:num_samples], 'signal_noise': sns[0:num_samples],
-                     'prob_detections': prob_detections[0:num_samples]}
+                     'prob_detections': prob_detections[0:num_samples], 'prob_intacts': prob_intacts[0:num_samples]}
 
     transits = pd.DataFrame(transits_dict)    
     
@@ -426,7 +445,8 @@ def prior_grid_logslope(cube, ndim, nparams, gi_m, gi_b, gi_c):
     Fixed from simulate.py by adding third param (cutoff) and taking m and cutoff into logspace
     Since m and cutoff don't have natural intervals anymore, I'm going to go from 10 to 9 intervals.
     This saves me ~20% runtime (from 11^3 to 1100 runs).
-    Okay fine guess not.
+    Okay actually guess not.
+    We're doing log(time), so slope is back to being sampled linearly (everything gets logged together later)
 
     gi_m: grid index on m axis
     gi_b: grid index on b axis
@@ -636,7 +656,7 @@ for gi_m in range(11):
             temp_geom_lams.append(geom_lam)
             temp_geom_logLs.append(geom_logL)
             temp_intact_fracs.append(intact_fractions)
-            transits.to_csv('/blue/sarahballard/c.lam/sculpting/transits_logtime/transits'+str(gi_m)+'_'+str(gi_b)+'_'+str(i)+'.csv')
+            transits.to_csv('/blue/sarahballard/c.lam/sculpting/transits_logtime2/transits'+str(gi_m)+'_'+str(gi_b)+'_'+str(i)+'.csv')
 
         ms.append(round(cube[0],1))
         bs.append(round(cube[1],1))
@@ -651,4 +671,4 @@ df = pd.DataFrame({'ms': ms, 'bs': bs, 'intact_fracs': intact_fracs, 'logLs': lo
     'geometric_lams': geometric_lams, 'geometric_logLs': geometric_logLs, 'cutoffs': cutoffs})
 print(df)
 #lams.to_csv('lams_cands.csv', index=False)
-df.to_csv('/blue/sarahballard/c.lam/sculpting/simulations_logtime.csv', index=False, sep='\t')
+df.to_csv('/blue/sarahballard/c.lam/sculpting/simulations_logtime2.csv', index=False, sep='\t')
