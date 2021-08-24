@@ -15,6 +15,15 @@ import matplotlib as mpl
 #import matplotlib.pyplot as plt
 #%matplotlib inline
 
+task_id = os.getenv('SLURM_ARRAY_TASK_ID')
+
+"""
+print("Task ID: ", task_id)
+gi_c = int(np.linspace(0, 10, 11)[int(task_id)])
+print("gi_c: ", gi_c)
+quit()
+"""
+
 path = '/blue/sarahballard/c.lam/sculpting/'
 berger_kepler = pd.read_csv(path+'berger_kepler_stellar17.csv') # crossmatched with Gaia via Bedell
 pnum = pd.read_csv(path+'pnum_plus_cands.csv')
@@ -644,37 +653,37 @@ for gi_m in range(11):
 """    
 for gi_m in range(11):
     for gi_b in range(11):
-        for gi_c in range(11):
-            temp_logLs = []
-            temp_lams = []
-            temp_geom_lams = []
-            temp_geom_logLs = []
-            temp_intact_fracs = []
-            #cube = [random.uniform(0,1), random.uniform(0,1), random.uniform(0,1)] # instantiate cube
-            cube = [0, 0, 0] # instantiate cube
-            cube = prior_grid_logslope(cube, ndim, nparams, gi_m, gi_b, gi_c) # move to new position on cube
-            for i in range(100): # ideally should be more
-                # calculate logL by comparing model(cube) and k
-                logL, lam, geom_lam, geom_logL, transits, intact_fractions = loglike_direct_draw_better(cube, ndim, nparams, k) 
-                #lam = lam.to_list()
-                temp_lams.append(lam)
-                temp_logLs.append(logL)
-                temp_geom_lams.append(geom_lam)
-                temp_geom_logLs.append(geom_logL)
-                temp_intact_fracs.append(intact_fractions)
-                transits.to_csv('/blue/sarahballard/c.lam/sculpting/transits_w_cutoff/transits'+str(gi_m)+'_'+str(gi_b)+'_'+str(gi_c)+'_'+str(i)+'.csv')
+        gi_c = int(np.linspace(0, 10, 11)[int(task_id)])
+        temp_logLs = []
+        temp_lams = []
+        temp_geom_lams = []
+        temp_geom_logLs = []
+        temp_intact_fracs = []
+        #cube = [random.uniform(0,1), random.uniform(0,1), random.uniform(0,1)] # instantiate cube
+        cube = [0, 0, 0] # instantiate cube
+        cube = prior_grid_logslope(cube, ndim, nparams, gi_m, gi_b, gi_c) # move to new position on cube
+        for i in range(100): # ideally should be more
+            # calculate logL by comparing model(cube) and k
+            logL, lam, geom_lam, geom_logL, transits, intact_fractions = loglike_direct_draw_better(cube, ndim, nparams, k) 
+            #lam = lam.to_list()
+            temp_lams.append(lam)
+            temp_logLs.append(logL)
+            temp_geom_lams.append(geom_lam)
+            temp_geom_logLs.append(geom_logL)
+            temp_intact_fracs.append(intact_fractions)
+            transits.to_csv('/blue/sarahballard/c.lam/sculpting/transits_w_cutoff/transits'+str(gi_m)+'_'+str(gi_b)+'_'+str(gi_c)+'_'+str(i)+'.csv')
 
-            ms.append(round(cube[0],1))
-            bs.append(round(cube[1],1))
-            cutoffs.append(round(cube[2],1))
-            lams.append(temp_lams)
-            geometric_lams.append(temp_geom_lams)
-            geometric_logLs.append(temp_geom_logLs)
-            logLs.append(temp_logLs)
-            intact_fracs.append(temp_intact_fracs)
+        ms.append(round(cube[0],1))
+        bs.append(round(cube[1],1))
+        cutoffs.append(round(cube[2],1))
+        lams.append(temp_lams)
+        geometric_lams.append(temp_geom_lams)
+        geometric_logLs.append(temp_geom_logLs)
+        logLs.append(temp_logLs)
+        intact_fracs.append(temp_intact_fracs)
         
-df = pd.DataFrame({'ms': ms, 'bs': bs, 'intact_fracs': intact_fracs, 'logLs': logLs, 'lams': lams, 
-    'geometric_lams': geometric_lams, 'geometric_logLs': geometric_logLs, 'cutoffs': cutoffs})
+df = pd.DataFrame({'ms': ms, 'bs': bs, 'cutoffs': cutoffs, 'intact_fracs': intact_fracs, 'logLs': logLs, 'lams': lams, 
+    'geometric_lams': geometric_lams, 'geometric_logLs': geometric_logLs})
 print(df)
 #lams.to_csv('lams_cands.csv', index=False)
-df.to_csv('/blue/sarahballard/c.lam/sculpting/simulations_w_cutoff.csv', index=False, sep='\t')
+df.to_csv('/blue/sarahballard/c.lam/sculpting/simulations_w_cutoff'+'_'+str(task_id)+'.csv', index=False, sep='\t')
