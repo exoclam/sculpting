@@ -165,7 +165,7 @@ def compute_prob2(x, m, b, cutoff): # adapted from Ballard et al in prep, log ve
         y = b + m*(np.log10(x)-8)
 
     elif x > cutoff: # if star is older than cutoff, use P(intact) at cutoff time
-        y = b + m*np.log10(cutoff)
+        y = b + m*(np.log10(cutoff)-8)
 
     if y < 0: # handle negative probabilities
         y = 0
