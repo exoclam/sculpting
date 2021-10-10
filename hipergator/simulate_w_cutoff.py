@@ -31,6 +31,23 @@ pnum = pnum.drop_duplicates(['kepid'])
 k = pnum.koi_count.value_counts() 
 k = pd.Series([len(berger_kepler)-np.sum(k), 244, 51, 12, 8, 1]) 
 
+# draw eccentricities using Limbach & Turner 2014 CDFs relating e to multiplicity
+limbach = pd.read_csv(path+'limbach_cdfs.txt', header=0, sep='\s{2,20}') # space-agnostic separator
+
+def calculate_eccentricity(multiplicity):
+    # draw eccentricities using Limbach & Turner 2014 CDFs relating e to multiplicity
+    values = np.random.rand(len(multiplicity)) 
+    if multiplicity==1:
+        value_bins = np.searchsorted(limbach['1'], values) # return positions in cdf vector where random values should go
+    elif multiplicity==2:
+        value_bins = np.searchsorted(limbach['2'], values) # return positions in cdf vector where random values should go
+    elif multiplicity==5:
+        value_bins = np.searchsorted(limbach['5'], values) # return positions in cdf vector where random values should go
+    elif multiplicity==6:
+        value_bins = np.searchsorted(limbach['6'], values) # return positions in cdf vector where random values should go
+    random_from_cdf = np.logspace(-2,0,101)[value_bins] # select x_d positions based on these random positions
+    return random_from_cdf
+
 def sim_transits_new(r_star, m_star, num_planets, mu, sigma, r_planet, age_star, planets_per_case2,
     planets_a_case2, inclinations, inclinations_degrees, impact_parameters, transit_statuses,
     transit_status1, transit_status2, transit_multiplicities, tdurs, cdpp, sns, prob_detections, 
@@ -189,6 +206,7 @@ def model_direct_draw(cube):
     midplanes_degrees = []
     inclinations = []
     inclinations_degrees = []
+    eccentricities = []
     planets_per_case2 = [] # maybe better to recreate it here b/c I can then generalize it for Case 2?
     planets_a_case2 = []
     star_radius = []
@@ -253,11 +271,13 @@ def model_direct_draw(cube):
             # young system has 5 or 6 planets
             num_planets = random.choice([5, 6]) 
             sigma = np.pi/90 # 2 degrees, per Fig 6 in Fabrycky 2012
+            eccentricity = calculate_eccentricity(num_planets)
             
             # simulate transit-related characteristics for 5 or 6 planets
             sim_transits_new(r_star, m_star, num_planets, mu, sigma, r_planet, age_star, 
                              planets_per_case2 = planets_per_case2, planets_a_case2 = planets_a_case2, 
                              inclinations = inclinations, inclinations_degrees = inclinations_degrees,
+                             eccentricities = eccentricities,
                              impact_parameters = impact_parameters, transit_statuses = transit_statuses, 
                              transit_status1 = transit_status1, transit_status2 = transit_status2, 
                              transit_multiplicities = transit_multiplicities, tdurs = tdurs,
@@ -268,11 +288,13 @@ def model_direct_draw(cube):
             # old system has 1 or 2 planets
             num_planets = random.choice([1, 2]) 
             sigma = np.pi/22.5 # 8 degree disk plane inclination scatter
+            eccentricity = calculate_eccentricity(num_planets)
             
             # simulate transit-related characteristics for 1 or 2 planets
             sim_transits_new(r_star, m_star, num_planets, mu, sigma, r_planet, age_star, 
                              planets_per_case2 = planets_per_case2, planets_a_case2 = planets_a_case2, 
                              inclinations = inclinations, inclinations_degrees = inclinations_degrees, 
+                             eccentricities = eccentricities,
                              impact_parameters = impact_parameters, transit_statuses = transit_statuses, 
                              transit_status1 = transit_status1, transit_status2 = transit_status2,
                              transit_multiplicities = transit_multiplicities, tdurs = tdurs,
