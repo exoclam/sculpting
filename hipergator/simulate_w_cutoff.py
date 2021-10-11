@@ -30,6 +30,7 @@ pnum = pd.read_csv(path+'pnum_plus_cands.csv')
 pnum = pnum.drop_duplicates(['kepid'])
 k = pnum.koi_count.value_counts() 
 k = pd.Series([len(berger_kepler)-np.sum(k), 244, 51, 12, 8, 1]) 
+G = 6.6743e-8 # gravitational constant in cgs
 
 # draw eccentricities using Limbach & Turner 2014 CDFs relating e to multiplicity
 limbach = pd.read_csv(path+'limbach_cdfs.txt', header=0, sep='\s{2,20}') # space-agnostic separator
@@ -47,6 +48,18 @@ def calculate_eccentricity(multiplicity):
         value_bins = np.searchsorted(limbach['6'], values) # return positions in cdf vector where random values should go
     random_from_cdf = np.logspace(-2,0,101)[value_bins] # select x_d positions based on these random positions
     return random_from_cdf
+
+def calculate_amd(m_pks, m_star, a_ks, e_ks, i_ks, multiplicity):
+    ### 
+    # calculate angular momentum deficit following Eqn 13 from Milholland et al 2021
+    ###
+    amd = []
+    for i in len(multiplicity):
+        lambda_k = m_pks[i] * np.sqrt(G*m_star*a_ks[i])
+        second_term = 1 - (np.sqrt(1 - (e_ks[i])**2))*np.cos(i_ks[i])
+        amd.append(lambda_k * second_term)
+        
+    return np.sum(amd)
 
 def sim_transits_new(r_star, m_star, num_planets, mu, sigma, r_planet, age_star, planets_per_case2,
     planets_a_case2, inclinations, inclinations_degrees, impact_parameters, transit_statuses,
@@ -244,6 +257,7 @@ def model_direct_draw(cube):
 
         ### planet ###
         r_planet = 2. # use two Earth radii; will make negligible difference
+        m_planet = 2. # needed for calculating AMD
         
         """
         # calculate probability given age using piecewise model
@@ -300,6 +314,11 @@ def model_direct_draw(cube):
                              transit_multiplicities = transit_multiplicities, tdurs = tdurs,
                              cdpp = cdpp, sns = sns, prob_detections = prob_detections,
                              geometric_transit_multiplicity = geometric_transit_multiplicity)
+
+
+        # calculate AMD per system
+        amd = calculate_amd(earth_mass_to_cgs(m_planet), solar_mass_to_cgs(m_star), au_to_cgs(planets_a_case2), 
+            eccentricity, inclinations, num_planets)
 
     midplanes = np.concatenate(midplanes, axis=0) # turn list of lists of one into regular list
     intact_fractions = intacts/num_samples
@@ -439,6 +458,15 @@ def au_to_solar_radius(au):
 
 def earth_radius_to_au(radius):
     return 4.26352e-5*radius
+
+def earth_mass_to_cgs(mass):
+    return mass*5.974e27 # grams
+
+def solar_mass_to_cgs(mass):
+    return mass*1.989e33 # grams
+
+def au_to_cgs(distance):
+    return distance*1.496e13 # cm
 
 def calculate_sn(P, rp, rs, cdpp, tdur): 
     """
