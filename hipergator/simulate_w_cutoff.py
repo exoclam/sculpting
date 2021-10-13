@@ -37,7 +37,7 @@ limbach = pd.read_csv(path+'limbach_cdfs.txt', header=0, sep='\s{2,20}') # space
 
 def calculate_eccentricity(multiplicity):
     # draw eccentricities using Limbach & Turner 2014 CDFs relating e to multiplicity
-    values = np.random.rand(len(multiplicity)) 
+    values = np.random.rand(multiplicity) 
     if multiplicity==1:
         value_bins = np.searchsorted(limbach['1'], values) # return positions in cdf vector where random values should go
     elif multiplicity==2:
@@ -54,7 +54,7 @@ def calculate_amd(m_pks, m_star, a_ks, e_ks, i_ks, multiplicity):
     # calculate angular momentum deficit following Eqn 13 from Milholland et al 2021
     ###
     amd = []
-    for i in len(multiplicity):
+    for i in range(multiplicity):
         lambda_k = m_pks[i] * np.sqrt(G*m_star*a_ks[i])
         second_term = 1 - (np.sqrt(1 - (e_ks[i])**2))*np.cos(i_ks[i])
         amd.append(lambda_k * second_term)
@@ -62,7 +62,7 @@ def calculate_amd(m_pks, m_star, a_ks, e_ks, i_ks, multiplicity):
     return np.sum(amd)
 
 def sim_transits_new(r_star, m_star, num_planets, mu, sigma, r_planet, age_star, planets_per_case2,
-    planets_a_case2, inclinations, inclinations_degrees, impact_parameters, transit_statuses,
+    planets_a_case2, inclinations, inclinations_degrees, eccentricities, impact_parameters, transit_statuses,
     transit_status1, transit_status2, transit_multiplicities, tdurs, cdpp, sns, prob_detections, 
     geometric_transit_multiplicity):
     """
@@ -238,6 +238,7 @@ def model_direct_draw(cube):
     xi_old = []
     xi_young = []
     prob_intacts = []
+    amds = []
     intacts = 0
     
     # draw ~20000 systems
@@ -257,7 +258,7 @@ def model_direct_draw(cube):
 
         ### planet ###
         r_planet = 2. # use two Earth radii; will make negligible difference
-        m_planet = 2. # needed for calculating AMD
+        m_planet = 5. # from Chen & Kipping 2016
         
         """
         # calculate probability given age using piecewise model
@@ -286,6 +287,7 @@ def model_direct_draw(cube):
             num_planets = random.choice([5, 6]) 
             sigma = np.pi/90 # 2 degrees, per Fig 6 in Fabrycky 2012
             eccentricity = calculate_eccentricity(num_planets)
+            omega = calculate_longitude_periastron()
             
             # simulate transit-related characteristics for 5 or 6 planets
             sim_transits_new(r_star, m_star, num_planets, mu, sigma, r_planet, age_star, 
@@ -315,10 +317,11 @@ def model_direct_draw(cube):
                              cdpp = cdpp, sns = sns, prob_detections = prob_detections,
                              geometric_transit_multiplicity = geometric_transit_multiplicity)
 
-
         # calculate AMD per system
-        amd = calculate_amd(earth_mass_to_cgs(m_planet), solar_mass_to_cgs(m_star), au_to_cgs(planets_a_case2), 
-            eccentricity, inclinations, num_planets)
+        amd = calculate_amd(earth_mass_to_cgs(m_planet), solar_mass_to_cgs(m_star), 
+            [au_to_cgs(pac2_elt) for pac2_elt in planets_a_case2], eccentricity, 
+            inclinations, num_planets)
+        amds.append(amd)
 
     midplanes = np.concatenate(midplanes, axis=0) # turn list of lists of one into regular list
     intact_fractions = intacts/num_samples
@@ -356,7 +359,7 @@ def model_direct_draw(cube):
 
     lam = lam.to_list()
     geom_lam = geom_lam.to_list()
-    return lam, geom_lam, transits, intact_fractions
+    return lam, geom_lam, transits, intact_fractions, amds
 
 def loglike_direct_draw(cube, ndim, nparams):
     """
@@ -393,13 +396,13 @@ def loglike_direct_draw_better(cube, ndim, nparams, k):
     """
 
     # retrieve prior cube and feed prior-normalized hypercube into model to generate transit multiplicities
-    lam, geom_lam, transits, intact_fractions = model_direct_draw(cube)
+    lam, geom_lam, transits, intact_fractions, amds = model_direct_draw(cube)
     #lam = [1e-12 if x==0.0 else x for x in lam] # avoid -infs in logL by turning 0 lams to 1e-12
     #geom_lam = [1e-12 if x==0.0 else x for x in geom_lam] # ditto
     logL = better_loglike(lam, k)
     geom_logL = better_loglike(geom_lam, k)
     
-    return logL, lam, geom_lam, geom_logL, transits, intact_fractions
+    return logL, lam, geom_lam, geom_logL, transits, intact_fractions, amds
 
 def better_loglike(lam, k):
     """
@@ -680,6 +683,9 @@ logLs = []
 geometric_lams = []
 geometric_logLs = []
 intact_fracs = []
+amds_per_cutoff = []
+eccentricities_per_cutoff = []
+inclinations_per_cutoff = []
 ms = []
 bs = []
 cutoffs = []
@@ -709,18 +715,20 @@ for gi_m in range(11):
         temp_geom_lams = []
         temp_geom_logLs = []
         temp_intact_fracs = []
+        temp_amds = []
         #cube = [random.uniform(0,1), random.uniform(0,1), random.uniform(0,1)] # instantiate cube
         cube = [0, 0, 0] # instantiate cube
         cube = prior_grid_logslope(cube, ndim, nparams, gi_m, gi_b, gi_c) # move to new position on cube
         for i in range(100): # ideally should be more
             # calculate logL by comparing model(cube) and k
-            logL, lam, geom_lam, geom_logL, transits, intact_fractions = loglike_direct_draw_better(cube, ndim, nparams, k) 
+            logL, lam, geom_lam, geom_logL, transits, intact_fractions, amds = loglike_direct_draw_better(cube, ndim, nparams, k) 
             #lam = lam.to_list()
             temp_lams.append(lam)
             temp_logLs.append(logL)
             temp_geom_lams.append(geom_lam)
             temp_geom_logLs.append(geom_logL)
             temp_intact_fracs.append(intact_fractions)
+            temp_amds.append(amds)
             transits.to_csv('/blue/sarahballard/c.lam/sculpting/transits_w_cutoff/transits'+str(gi_m)+'_'+str(gi_b)+'_'+str(gi_c)+'_'+str(i)+'.csv')
 
         ms.append(round(cube[0],1))
@@ -731,9 +739,13 @@ for gi_m in range(11):
         geometric_logLs.append(temp_geom_logLs)
         logLs.append(temp_logLs)
         intact_fracs.append(temp_intact_fracs)
+        amds_per_cutoff.append(temp_amds)
+        eccentricities_per_cutoff.append(ecc)
+
         
 df = pd.DataFrame({'ms': ms, 'bs': bs, 'cutoffs': cutoffs, 'intact_fracs': intact_fracs, 'logLs': logLs, 'lams': lams, 
-    'geometric_lams': geometric_lams, 'geometric_logLs': geometric_logLs})
+    'geometric_lams': geometric_lams, 'geometric_logLs': geometric_logLs, 'amds': amds_per_cutoff,
+    'inclinations': inclinations_per_cutoff, 'eccentricities': eccentricities_per_cutoff})
 print(df)
 #lams.to_csv('lams_cands.csv', index=False)
 df.to_csv('/blue/sarahballard/c.lam/sculpting/simulations_w_cutoff'+'_'+str(task_id)+'.csv', index=False, sep='\t')
