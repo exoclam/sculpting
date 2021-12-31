@@ -464,7 +464,7 @@ def model_van_eylen(star_age, df, model_flag, cube):
     berger_kepler_planets['incl'] = incls
     berger_kepler_planets['omega'] = omegas
     berger_kepler_planets['planet_radius'] = 2.
-    print(len(num_planets_all), len(omegas))
+    #print(len(num_planets_all), len(omegas))
     #berger_kepler_planets['num_planets'] = num_planets_all
     ###print("ecc: ", berger_kepler_planets['ecc'])
     ###print("incl: ", berger_kepler_planets['incl'])

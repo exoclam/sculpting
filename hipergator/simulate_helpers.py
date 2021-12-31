@@ -189,14 +189,14 @@ def calculate_transit_duration(P, r_star, r_planet, b, a, inc, e, omega, angle_f
     
     return (P / np.pi) * np.arcsin(arg2) * arg3
 
-def calculate_transit_duration_paw(P, star_radius, planet_radius, b, a, incl, e, omega): # Paul Anthony Wilson website
+def calculate_transit_duration_paw(P, star_radius, planet_radius, b, a, incl, e, omega): # Paul Anthony Wilson website: https://www.paulanthonywilson.com/exoplanets/exoplanet-detection-techniques/the-exoplanet-transit-method/
     arg1 = np.sqrt((star_radius+planet_radius)**2 - (b*star_radius)**2) 
     arg2 = arg1/a
     arg3 = np.sqrt(1-e**2)/(1+e*np.sin(omega)) # eccentricity factor from Eqn 16
     #print("PAW args: ", arg1, arg2, arg3)
     return (P / np.pi) * np.arcsin(arg2) * arg3
 
-def calculate_transit_duration_he(P, star_radius, planet_radius, a, e, omega): # Matthias He
+def calculate_transit_duration_he(P, star_radius, planet_radius, a, e, omega): # from Matthias He: https://github.com/ExoJulia/SysSimExClusters/tree/master/src
     arg1 = (P/np.pi) * (star_radius/a)
     arg2 = np.sqrt(1-e**2)/(1+e*np.sin(omega)) # eccentricity factor from Eqn 16
     arg2 = 1
