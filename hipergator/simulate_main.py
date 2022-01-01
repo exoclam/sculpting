@@ -106,17 +106,8 @@ def loglike_direct_draw_better(cube, ndim, nparams, k):
 
 
 """
-For each of the three main hyperparams, I make 50 simulations (50000 total simulations). I use the original way of sampling eccentricities.
-I output each simulation to a folder and never run them again. The I/O for calculating logLs will be worth not having to re-run simulations.
-For each of the 50K resulting lambdas, I create 10 of varying fraction of systems with planets (the fourth hyperparam).
-I run separate code to compute logLs for each 4-hyperparam combination and plot that as I have done before.
-I do the same, now using the Rayleigh-Limbach hybrid eccentricity distribution. 
-
-Eventually, I do the same using pymultinest. A man can dream.
-
 WHERE I LEFT OFF: 
 - Add logic in simulate_transit for skipping simulations if cutoff occurs more than once after probability has reached zero (use the first one for all)
-- Also don't vary cutoffs for m=0 case.
 """
 
 def unit_test(k):
@@ -169,10 +160,20 @@ def main(cube, ndim, nparams, k):
 	for gi_m in range(11):
 		for gi_b in range(11):
 			for gi_c in range(11):
+
+				# fetch hyperparams
 				cube = prior_grid_logslope(cube, ndim, nparams, gi_m, gi_b, gi_c)
-				for i in range(50):
-					berger_kepler_planets = model_van_eylen(berger_kepler.iso_age, berger_kepler, 'limbach', cube)
-					berger_kepler_planets.to_csv('/blue/sarahballard/c.lam/sculpting2/simulations/transits'+str(gi_m)+'_'+str(gi_b)+'_'+str(gi_c)+'_'+str(i)+'.csv')
+				
+				# if cutoff occurs more than once after probability has reached zero or if m==0, don't do redundant sims
+				flag = redundancy_check(cube[0], cube[1], cube[2])
+				if flag==False: # do one more simulation, then exit cutoff range
+					berger_kepler_planets = model_van_eylen(berger_kepler.iso_age, berger_kepler, 'mixed-limbach', cube)
+					berger_kepler_planets.to_csv('/blue/sarahballard/c.lam/sculpting2/simulations/limbach-hybrid/transits'+str(gi_m)+'_'+str(gi_b)+'_'+str(gi_c)+'_'+str(i)+'.csv')
+					break 
+				else:
+					berger_kepler_planets = model_van_eylen(berger_kepler.iso_age, berger_kepler, 'mixed-limbach', cube)
+					berger_kepler_planets.to_csv('/blue/sarahballard/c.lam/sculpting2/simulations/limbach-hybrid/transits'+str(gi_m)+'_'+str(gi_b)+'_'+str(gi_c)+'_'+str(i)+'.csv')
+
 	return
 
 #unit_test(k)

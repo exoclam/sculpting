@@ -38,9 +38,10 @@ def earth_radius_to_au(radius):
 ### helper main functions
 def compute_prob(x, m, b, cutoff): # adapted from Ballard et al in prep, log version
     # calculate probability of intact vs disrupted
+    
     x = x*1e9
     if x <= 1e8: # we don't care about (nor do we have) systems before 1e8 years
-        y = b
+        y = b 
 
     elif (x > 1e8) & (x <= cutoff): # pre-cutoff regime
         #print(np.log10(x_elt), m, b)
@@ -51,10 +52,22 @@ def compute_prob(x, m, b, cutoff): # adapted from Ballard et al in prep, log ver
 
     if y < 0: # handle negative probabilities
         y = 0
-    elif y > 1:
+    elif y > 1: # handle probabilities greater than 1
         y = 1
             
     return y
+
+def redundancy_check(m, b, cutoff):
+    # skip simulations if cutoff occurs more than once after probability has reached zero (use the first one for all)
+    # also don't vary cutoffs if m is flat   
+
+    y = b + m*(np.log10(cutoff)-8)
+    if y < 0:
+        return False
+    elif m==0:
+        return False
+    else:
+        return True
 
 ### helper physical transit functions
 def calculate_eccentricity_limbach(multiplicity):
