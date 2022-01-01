@@ -389,12 +389,13 @@ def model_van_eylen(star_age, df, model_flag, cube):
     - df: berger_kepler (DataFrame of star and planet params)
     - model_flag: what initial eccentricity distribution to use (string)
     - cube: list of [m, b, cutoff in years, fraction of systems with planets]
+    - Just kidding, cube will just be [m, b, cutoff]...frac will be used in likelihood_main.py
     Returns:
     - Pandas DataFrame: an enriched version of df
     """
     
     # unpack model parameters from hypercube
-    m, b, cutoff, frac = cube[0], cube[1], cube[2], cube[3]
+    m, b, cutoff = cube[0], cube[1], cube[2]
 
     periods = [] # the column upon which we'll explode berger_kepler to make berger_kepler_planets
     num_planets_all = [] # intrinsic planets

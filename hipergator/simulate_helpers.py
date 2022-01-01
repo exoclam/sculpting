@@ -11,8 +11,8 @@ import random
 from scipy.stats import gaussian_kde, loguniform
 from math import lgamma
 
-#path = '/blue/sarahballard/c.lam/sculpting/'
-path = '/Users/chrislam/Desktop/sculpting/' # new computer has different username
+path = '/blue/sarahballard/c.lam/sculpting/'
+#path = '/Users/chrislam/Desktop/sculpting/' # new computer has different username
 
 ### helper conversion functions
 def p_to_a(P, star_mass):
@@ -164,7 +164,7 @@ def draw_eccentricity_van_eylen(model_flag, num_planets):
 
 def calculate_impact_parameter(star_radius, a, e, incl, omega, angle_flag): # following Winn 2010 Eqn 7
     """
-    angle_flag: True means indexed at 0 (default); False means indexed at pi/2
+    angle_flag: True means indexed at 0; False means indexed at pi/2
     """
     star_radius = solar_radius_to_au(star_radius)
     if angle_flag==True:

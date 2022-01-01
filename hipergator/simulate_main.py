@@ -23,11 +23,11 @@ from simulate_helpers import *
 #from simulate_transit import model_van_eylen
 
 ### variables for HPG
-#task_id = os.getenv('SLURM_ARRAY_TASK_ID')
-#path = '/blue/sarahballard/c.lam/sculpting/'
+task_id = os.getenv('SLURM_ARRAY_TASK_ID')
+path = '/blue/sarahballard/c.lam/sculpting/'
 
 ### variables for local
-path = '/Users/chrislam/Desktop/sculpting/' # new computer has different username
+#path = '/Users/chrislam/Desktop/sculpting/' # new computer has different username
 berger_kepler = pd.read_csv(path+'berger_kepler_stellar17.csv') # crossmatched with Gaia via Bedell
 pnum = pd.read_csv(path+'pnum_plus_cands.csv')
 pnum = pnum.drop_duplicates(['kepid'])
@@ -168,7 +168,7 @@ def main(cube, ndim, nparams, k):
 
 	for gi_m in range(11):
 		for gi_b in range(11):
-			for gi_cutoff in range(11):
+			for gi_c in range(11):
 				cube = prior_grid_logslope(cube, ndim, nparams, gi_m, gi_b, gi_c)
 				for i in range(50):
 					berger_kepler_planets = model_van_eylen(berger_kepler.iso_age, berger_kepler, 'limbach', cube)
