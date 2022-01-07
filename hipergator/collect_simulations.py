@@ -80,6 +80,7 @@ sims = []
 ms = []
 bs = []
 cs = []
+fs = []
 max_logLs = []
 min_logLs = []
 mean_logLs = []
@@ -91,45 +92,56 @@ start = datetime.now()
 for gi_m in range(11):
 	for gi_b in range(11):
 		for gi_c in range(11):
-			cube = prior_grid_logslope(cube, ndim, nparams, gi_m, gi_b, gi_c)
-			#print("cube: ", cube)
-			ms = cube[0]
-			bs = cube[1]
-			cs = cube[2]
 
 			sim = glob(data_path+'transits'+str(gi_m)+'_'+str(gi_b)+'_'+str(gi_c)+'_'+'*')
-			logLs = []
-			transit_multiplicities = []
-			for i in range(len(sim)):
-				#print(i)
-				df = pd.read_csv(sim[i], delimiter=',', names=list(range(150))) # handle the few rows of different lengths; most are 150
-				new_header = df.iloc[0] #grab the first row for the header
-				df = df[1:] #take the data less the header row
-				df.columns = new_header #set the header row as the df header
+			cube = prior_grid_logslope(cube, ndim, nparams, gi_m, gi_b, gi_c)
 
-				# isolate transiting planets
-				transiters_berger_kepler = df.loc[df['transit_status']==1]
+			# cycle through different fractions of systems with planets
+			for f in np.linspace(0, 1, 11):
+				ms.append(cube[0])
+				bs.append(cube[1])
+				cs.append(cube[2])
+				fs.append(f)
 
-				# compute transit multiplicity
-				transit_multiplicity = transiters_berger_kepler.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid
-				transit_multiplicities.append(list(transit_multiplicity))
+				logLs = []
+				transit_multiplicities = []
+				for i in range(len(sim)):
+					df = pd.read_csv(sim[i], delimiter=',', names=list(range(150))) # handle the few rows of different lengths; most are 150
+					new_header = df.iloc[0] #grab the first row for the header
+					df = df[1:] #take the data less the header row
+					df.columns = new_header #set the header row as the df header
 
-				# calculate logL
-				logL = better_loglike(transit_multiplicity, k)
-				logLs.append(logL)
+					# isolate transiting planets
+					transiters_berger_kepler = df.loc[df['transit_status']==1]
 
-			max_logLs.append(max(logLs))
-			min_logLs.append(min(logLs))
-			mean_logLs.append(np.mean(logLs))
-			std_logLs.append(np.std(logLs))
-			median_logLs.append(np.median(logLs))
+					# compute transit multiplicity and save off the original transit multiplicity (pre-frac)
+					transit_multiplicity = transiters_berger_kepler.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid
+					transit_multiplicities.append(list(transit_multiplicity))
 
-			transit_multiplicities_all.append(transit_multiplicities)
+					# calculate logLs for different fracs and keep the best one
+					logL = better_loglike(transit_multiplicity*f, k)
+					logLs.append(logL)
 
-			end = datetime.now()
-			#print("end: ", end)
-			#print("time: ", end-start)
-			#quit()
+				try:
+					max_logLs.append(max(logLs))
+					min_logLs.append(min(logLs))
+					mean_logLs.append(np.mean(logLs))
+					std_logLs.append(np.std(logLs))
+					median_logLs.append(np.median(logLs))
+
+					transit_multiplicities_all.append(transit_multiplicities)
+
+				except: # sometimes logLs will be empty where a redundancy check was passed for some hyperparam tuple
+					max_logLs.append([])
+					min_logLs.append([])
+					mean_logLs.append([])
+					std_logLs.append([])
+					median_logLs.append([])
+
+				end = datetime.now()
+				#print("end: ", end)
+				#print("time: ", end-start)
+				#quit()
 
 df_logL = pd.DataFrame({'ms': ms, 'bs': bs, 'cs': cs, 'max_logLs': max_logLs, 'min_logLs': min_logLs, 
 	'mean_logLs': mean_logLs, 'median_logLs': median_logLs, 'std_logLs': std_logLs, 
