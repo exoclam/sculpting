@@ -11,6 +11,7 @@ import random
 from scipy.stats import gaussian_kde, loguniform
 from math import lgamma
 from simulate_helpers import *
+import matplotlib.pyplot as plt
 
 def calculate_transit_unit_test(planet_radius, star_radius, P, e, incl, omega, star_mass, cdpp):
     
@@ -403,7 +404,10 @@ def model_van_eylen(star_age, df, model_flag, cube):
     incls = []
     omegas = []
     intacts = 0
-    
+    midplanes = []
+    intact_flags = []
+    mutual_incls = []
+
     for age in star_age:
         # sometimes make more than one planet per system
         prob = compute_prob(age, m, b, cutoff)
@@ -411,31 +415,38 @@ def model_van_eylen(star_age, df, model_flag, cube):
         
         # midplane
         midplane = np.random.uniform(-np.pi/2,np.pi/2,1)
-        
+        midplanes.append(midplane)
+
         intact_flag = np.random.choice(['intact', 'disrupted'], p=[prob, 1-prob])
         if intact_flag == 'intact':
             intacts += 1
             # young system has 5 or 6 planets
             num_planets = random.choice([5, 6]) 
             
-            # draw ecc and incl
+            # for drawing incl
             sigma = np.pi/90 # 2 degrees, per Fig 6 in Fabrycky 2012
             
         elif intact_flag == 'disrupted':
             # old system has 1 or 2 planets
             num_planets = random.choice([1, 2]) 
 
-            # draw ecc and incl
+            # for drawing incl
             sigma = np.pi/22.5 # 8 degrees, per Fig 6 in Fabrycky 2012
             
         # draw period from loguniform distribution from 2 to 300 days
-        P = np.array(loguniform.rvs(2, 300, size=num_planets)) 
+        P = np.array(loguniform.rvs(2, 300, size=num_planets))
         periods.append(P)
         
         # draw inclinations from Gaussian distribution centered on midplane
         incl = np.random.normal(midplane, sigma, num_planets)
+        #incl = [np.pi/2 if inc_elt > np.pi/2 else inc_elt for inc_elt in incl] # artificially impose bounds post-facto
+        #incl = [-np.pi/2 if inc_elt < -np.pi/2 else inc_elt for inc_elt in incl] # lower bound
         incls.append(incl)
-        
+
+        # obtain mutual inclinations for plotting to compare {e, i} distributions
+        mutual_incl = midplane - incl
+        mutual_incls.append(mutual_incl)
+
         # draw eccentricity
         ecc = draw_eccentricity_van_eylen(model_flag, num_planets)
         eccs.append(ecc)
@@ -445,7 +456,18 @@ def model_van_eylen(star_age, df, model_flag, cube):
         omegas.append(omega)
         
         num_planets_all.append(num_planets)
+
+        intact_flags.append(intact_flag)
     
+    """
+    plt.hist(np.array(midplanes)*180/np.pi, bins=100)
+    plt.savefig('midplanes.png')
+
+    plt.hist(np.array(incls)*180/np.pi, bins=100)
+    plt.savefig('incls.png')
+    quit()
+    """
+
     df['P'] = periods
     berger_kepler_planets = df.explode('P')
     #print(berger_kepler_planets)
@@ -457,6 +479,7 @@ def model_van_eylen(star_age, df, model_flag, cube):
     
     eccs = np.asarray([item for ecc_elt in eccs for item in ecc_elt])
     incls = np.asarray([item for incl_elt in incls for item in incl_elt])
+    mutual_incls = np.asarray([item for mutual_incl_elt in mutual_incls for item in mutual_incl_elt])
     omegas = np.asarray([item for omega_elt in omegas for item in omega_elt])
     #num_planets_all = np.asarray([item for numplanet_elt in num_planets_all for item in numplanet_elt])
     #print(len(incls), len(eccs), len(omega))
@@ -465,6 +488,8 @@ def model_van_eylen(star_age, df, model_flag, cube):
     berger_kepler_planets['incl'] = incls
     berger_kepler_planets['omega'] = omegas
     berger_kepler_planets['planet_radius'] = 2.
+    berger_kepler_planets['mutual_incl'] = mutual_incls
+    #berger_kepler_planets['intact_flag'] = intact_flags
     #print(len(num_planets_all), len(omegas))
     #berger_kepler_planets['num_planets'] = num_planets_all
     ###print("ecc: ", berger_kepler_planets['ecc'])

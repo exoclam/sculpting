@@ -12,14 +12,16 @@ from math import lgamma
 #from simulate_main import prior_grid_logslope, better_loglike
 from datetime import datetime
 
-path = '/blue/sarahballard/c.lam/sculpting2/'
+#path = '/blue/sarahballard/c.lam/sculpting2/' # HPG
+path = '/Users/chrislam/Desktop/sculpting/' # local
 
 # get ground truth to calculate logLs
 berger_kepler = pd.read_csv(path+'berger_kepler_stellar17.csv') # crossmatched with Gaia via Bedell
 pnum = pd.read_csv(path+'pnum_plus_cands.csv')
 pnum = pnum.drop_duplicates(['kepid'])
 k = pnum.koi_count.value_counts() 
-k = pd.Series([len(berger_kepler)-np.sum(k), 244, 51, 12, 8, 1]) 
+k = pd.Series([len(berger_kepler)-np.sum(k), 244, 51, 12, 8, 1, 0]) 
+print("k: ", k)
 
 # set up hypercube just so I can associate logLs with correct hyperparams
 ndim = 3
@@ -58,11 +60,12 @@ def better_loglike(lam, k):
 	logL = []
 	#print(lam)
 	for i in range(len(lam)):
-		if lam[i]==0:    
+		if lam[i]==0:
 			term3 = -lgamma(k[i]+1)
 			term2 = -lam[i]
 			term1 = 0
 			logL.append(term1+term2+term3)
+
 		else:
 			term3 = -lgamma(k[i]+1)
 			term2 = -lam[i]
@@ -122,14 +125,14 @@ for gi_m in range(11):
 					logL = better_loglike(transit_multiplicity*f, k)
 					logLs.append(logL)
 
+				transit_multiplicities_all.append(transit_multiplicities)
+
 				try:
 					max_logLs.append(max(logLs))
 					min_logLs.append(min(logLs))
 					mean_logLs.append(np.mean(logLs))
 					std_logLs.append(np.std(logLs))
 					median_logLs.append(np.median(logLs))
-
-					transit_multiplicities_all.append(transit_multiplicities)
 
 				except: # sometimes logLs will be empty where a redundancy check was passed for some hyperparam tuple
 					max_logLs.append([])
@@ -143,7 +146,18 @@ for gi_m in range(11):
 				#print("time: ", end-start)
 				#quit()
 
-df_logL = pd.DataFrame({'ms': ms, 'bs': bs, 'cs': cs, 'max_logLs': max_logLs, 'min_logLs': min_logLs, 
+print(len(ms))
+print(len(bs))
+print(len(cs))
+print(len(fs))
+print(len(max_logLs))
+print(len(min_logLs))
+print(len(mean_logLs))
+print(len(median_logLs))
+print(len(std_logLs))
+print(len(transit_multiplicities_all))
+
+df_logL = pd.DataFrame({'ms': ms, 'bs': bs, 'cs': cs, 'fs': fs, 'max_logLs': max_logLs, 'min_logLs': min_logLs, 
 	'mean_logLs': mean_logLs, 'median_logLs': median_logLs, 'std_logLs': std_logLs, 
 	'transit_multiplicities_all': transit_multiplicities_all})
 print(df_logL)

@@ -23,11 +23,11 @@ from simulate_helpers import *
 #from simulate_transit import model_van_eylen
 
 ### variables for HPG
-task_id = os.getenv('SLURM_ARRAY_TASK_ID')
-path = '/blue/sarahballard/c.lam/sculpting/'
+#task_id = os.getenv('SLURM_ARRAY_TASK_ID')
+#path = '/blue/sarahballard/c.lam/sculpting2/'
 
 ### variables for local
-#path = '/Users/chrislam/Desktop/sculpting/' # new computer has different username
+path = '/Users/chrislam/Desktop/sculpting/' # new computer has different username
 berger_kepler = pd.read_csv(path+'berger_kepler_stellar17.csv') # crossmatched with Gaia via Bedell
 pnum = pd.read_csv(path+'pnum_plus_cands.csv')
 pnum = pnum.drop_duplicates(['kepid'])
@@ -104,36 +104,48 @@ def loglike_direct_draw_better(cube, ndim, nparams, k):
 	
 	return logL, lam, geom_lam, geom_logL, transits, intact_fractions, amds, eccentricities, inclinations_degrees
 
+def unit_test(k, model_flag):
 
-"""
-WHERE I LEFT OFF: 
-- Add logic in simulate_transit for skipping simulations if cutoff occurs more than once after probability has reached zero (use the first one for all)
-"""
-
-def unit_test(k):
 	### use fiducial values of m, b, cutoff, and frac for now to test eccentricity models
-	m = -0.3
+	m = 0.
 	b = 0.5
 	cutoff = 1e10 # yrs
 	frac = 0.4 # fraction of FGK dwarfs with planets
 	cube = [m, b, cutoff, frac]
 
-	berger_kepler_planets = model_van_eylen(berger_kepler.iso_age, berger_kepler, 'limbach', cube)
+	berger_kepler_planets = model_van_eylen(berger_kepler.iso_age, berger_kepler, model_flag, cube)
 	transiters_berger_kepler = berger_kepler_planets.loc[berger_kepler_planets['transit_status']==1]
 	transit_multiplicity = transiters_berger_kepler.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid
 
 	# make sure the 6-multiplicity bin is filled in with zero and ignore zero-bin
 	k[6] = 0
 	k = k[1:].reset_index()[0]
-	print(list(transit_multiplicity))
-	print(list(k))
+	print("transit multiplicity: ", list(transit_multiplicity))
+	print("k: ", list(k))
 
 	# calculate log likelihood
 	logL = better_loglike(list(transit_multiplicity), list(k))
-	print(logL)
-	print(better_loglike([466.8, 72.8, 14.8, 13.2, 7.6, 2.4], k))
+	print("logL: ", logL)
+	print("old logL: ", better_loglike([466.8, 72.8, 14.8, 13.2, 7.6, 2.4], k))
+	print("total: ", len(berger_kepler_planets))
+	print("transiters: ", len(transiters_berger_kepler))
 
-	return
+	# redundancy check
+	redundant = redundancy_check(m, b, cutoff)
+	print("redundancy check: ", redundant)
+
+	"""
+	# sanity check the resulting {e, i} distribution with a plot
+	ecc = berger_kepler_planets.ecc
+	incl = np.abs(berger_kepler_planets.incl*180/np.pi)
+	plt.scatter(ecc, incl, s=2)
+	plt.yscale('log')
+	plt.xscale('log')
+	plt.xlim(1e-3,1e0)
+	plt.ylim(1e-2,1e2)
+	plt.savefig('ecc-inc-test.png')
+	"""
+	return berger_kepler_planets.ecc, np.abs(berger_kepler_planets.mutual_incl)*180/np.pi
 
 # how many params, how many dims, initialize cube
 ndim = 3
@@ -178,6 +190,32 @@ def main(cube, ndim, nparams, k):
 
 	return
 
-#unit_test(k)
-main(cube, ndim, nparams, k)
+#main(cube, ndim, nparams, k)
 
+
+#### Run unit test to plot and compare different eccentricity distribution assumptions
+
+fig, axes = plt.subplots(2, 3, figsize=(16, 9))
+models = ['rayleigh', 'beta', 'half-Gaussian', 'mixed', 'limbach', 'limbach-hybrid']
+plot_i = 0
+for row in range(2):
+	for column in range(3):
+		model_flag = models[plot_i]
+		ecc, incl = unit_test(k, model_flag)
+		ax = plt.subplot2grid((2,3), (row,column))
+		im = ax.hexbin(ecc, incl, yscale='log', xscale='log', extent=(-3, 0, -2, 2))
+		fig2 = sns.kdeplot(np.array(ecc), np.array(incl), legend = True, levels=[0.68, 0.95], colors=['black','red'])
+		#plt.hexbin(berger_kepler_planets.ecc, np.log10(berger_kepler_planets.incl*180/np.pi))	
+		ax.set_ylim(1e-2, 1e2)
+		ax.set_xlim(1e-3, 1e0)
+		ax.set_title(model_flag)
+		if plot_i==3:
+			ax.set_xlabel('eccentricity')
+		if plot_i==0:
+			ax.set_ylabel('inclination')
+		fig.colorbar(im, ax=ax)
+		#plt.savefig('ecc-inc-limbach-00-005.png')
+
+		plot_i += 1
+
+plt.savefig('ecc-inc-00-05.png')

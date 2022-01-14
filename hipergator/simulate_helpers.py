@@ -11,8 +11,8 @@ import random
 from scipy.stats import gaussian_kde, loguniform
 from math import lgamma
 
-path = '/blue/sarahballard/c.lam/sculpting/'
-#path = '/Users/chrislam/Desktop/sculpting/' # new computer has different username
+#path = '/blue/sarahballard/c.lam/sculpting2/'
+path = '/Users/chrislam/Desktop/sculpting/' # new computer has different username
 
 ### helper conversion functions
 def p_to_a(P, star_mass):
@@ -159,7 +159,7 @@ def draw_eccentricity_van_eylen(model_flag, num_planets):
             if any(d < 0 for d in draw): # redraw if any planet's eccentricity is negative
                 draw = draw_eccentricity_van_eylen('mixed', num_planets)
                 
-    elif model_flag=='mixed-limbach':
+    elif model_flag=='limbach-hybrid':
         """
         Testing something for Sarah: use Rayleigh for intact and Limbach for disrupted. 
         """
@@ -169,9 +169,15 @@ def draw_eccentricity_van_eylen(model_flag, num_planets):
             draw = np.random.rayleigh(sigma_rayleigh, num_planets)
         elif num_planets>1:
             draw = calculate_eccentricity_limbach(num_planets)
-            
+
     elif model_flag=='limbach': # OG way of drawing eccentricities, from Limbach & Turner 2014
         draw = calculate_eccentricity_limbach(num_planets)
+
+    elif model_flag=='absurd': # sanity check
+        if num_planets==1:
+            draw = np.random.uniform(0.09, 0.11, num_planets)
+        elif num_planets>1:
+            draw = np.random.uniform(0.009, 0.011, num_planets)
             
     return draw
 
