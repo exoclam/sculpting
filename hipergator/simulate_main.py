@@ -23,11 +23,11 @@ from simulate_helpers import *
 #from simulate_transit import model_van_eylen
 
 ### variables for HPG
-#task_id = os.getenv('SLURM_ARRAY_TASK_ID')
-#path = '/blue/sarahballard/c.lam/sculpting2/'
+task_id = os.getenv('SLURM_ARRAY_TASK_ID')
+path = '/blue/sarahballard/c.lam/sculpting2/'
 
 ### variables for local
-path = '/Users/chrislam/Desktop/sculpting/' # new computer has different username
+#path = '/Users/chrislam/Desktop/sculpting/' # new computer has different username
 berger_kepler = pd.read_csv(path+'berger_kepler_stellar_fgk.csv') # crossmatched with Gaia via Bedell, previously berger_kepler_stellar17.csv
 pnum = pd.read_csv(path+'pnum_plus_cands_fgk.csv') # previously pnum_plus_cands.csv
 pnum = pnum.drop_duplicates(['kepid'])
@@ -181,12 +181,12 @@ def main(cube, ndim, nparams, k):
 				flag = redundancy_check(cube[0], cube[1], cube[2])
 				if flag==False: # do one more simulation, then exit cutoff range
 					for i in range(3):
-						berger_kepler_planets = model_van_eylen(berger_kepler.iso_age, berger_kepler, 'mixed-limbach', cube)
+						berger_kepler_planets = model_van_eylen(berger_kepler.iso_age, berger_kepler, 'limbach-hybrid', cube)
 						berger_kepler_planets.to_csv('/blue/sarahballard/c.lam/sculpting2/simulations/limbach-hybrid/transits'+str(gi_m)+'_'+str(gi_b)+'_'+str(gi_c)+'_'+str(i)+'.csv')
 					break 
 				else:
 					for i in range(3):
-						berger_kepler_planets = model_van_eylen(berger_kepler.iso_age, berger_kepler, 'mixed-limbach', cube)
+						berger_kepler_planets = model_van_eylen(berger_kepler.iso_age, berger_kepler, 'limbach-hybrid', cube)
 						berger_kepler_planets.to_csv('/blue/sarahballard/c.lam/sculpting2/simulations/limbach-hybrid/transits'+str(gi_m)+'_'+str(gi_b)+'_'+str(gi_c)+'_'+str(i)+'.csv')
 
 	return
