@@ -418,6 +418,7 @@ def model_van_eylen(star_age, df, model_flag, cube):
         midplanes.append(midplane)
 
         intact_flag = np.random.choice(['intact', 'disrupted'], p=[prob, 1-prob])
+        intact_flags.append(intact_flag)
         if intact_flag == 'intact':
             intacts += 1
             # young system has 5 or 6 planets
@@ -457,8 +458,6 @@ def model_van_eylen(star_age, df, model_flag, cube):
         
         num_planets_all.append(num_planets)
 
-        intact_flags.append(intact_flag)
-    
     """
     plt.hist(np.array(midplanes)*180/np.pi, bins=100)
     plt.savefig('midplanes.png')
@@ -467,9 +466,13 @@ def model_van_eylen(star_age, df, model_flag, cube):
     plt.savefig('incls.png')
     quit()
     """
-
     df['P'] = periods
+    df['midplane'] = midplanes
+    df['intact_flag'] = intact_flags
+    df['num_planets'] = num_planets_all
     berger_kepler_planets = df.explode('P')
+
+    berger_kepler_planets = df.explode('P', '')
     #print(berger_kepler_planets)
     ###print("intacts: ", intacts)
     
@@ -495,10 +498,9 @@ def model_van_eylen(star_age, df, model_flag, cube):
     ###print("ecc: ", berger_kepler_planets['ecc'])
     ###print("incl: ", berger_kepler_planets['incl'])
     ###print("mean ecc and incl: ", np.mean(berger_kepler_planets['ecc']), np.mean(berger_kepler_planets['incl']))
-    ###print(berger_kepler_planets)
-    
+
     prob_detections, transit_statuses, transit_multiplicities, sn = calculate_transit_me_with_amd(berger_kepler_planets.P, 
-                            berger_kepler_planets.st_radius, berger_kepler_planets.planet_radius,
+                            berger_kepler_planets.iso_rad, berger_kepler_planets.planet_radius,
                             berger_kepler_planets.ecc, 
                             berger_kepler_planets.incl, 
                             berger_kepler_planets.omega, berger_kepler_planets.iso_mass,

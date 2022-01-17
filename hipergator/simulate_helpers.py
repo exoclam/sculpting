@@ -11,8 +11,8 @@ import random
 from scipy.stats import gaussian_kde, loguniform
 from math import lgamma
 
-#path = '/blue/sarahballard/c.lam/sculpting2/'
-path = '/Users/chrislam/Desktop/sculpting/' # new computer has different username
+path = '/blue/sarahballard/c.lam/sculpting2/'
+#path = '/Users/chrislam/Desktop/sculpting/' # new computer has different username
 
 ### helper conversion functions
 def p_to_a(P, star_mass):

@@ -28,11 +28,12 @@ from simulate_helpers import *
 
 ### variables for local
 path = '/Users/chrislam/Desktop/sculpting/' # new computer has different username
-berger_kepler = pd.read_csv(path+'berger_kepler_stellar17.csv') # crossmatched with Gaia via Bedell
-pnum = pd.read_csv(path+'pnum_plus_cands.csv')
+berger_kepler = pd.read_csv(path+'berger_kepler_stellar_fgk.csv') # crossmatched with Gaia via Bedell, previously berger_kepler_stellar17.csv
+pnum = pd.read_csv(path+'pnum_plus_cands_fgk.csv') # previously pnum_plus_cands.csv
 pnum = pnum.drop_duplicates(['kepid'])
 k = pnum.koi_count.value_counts() 
 k = pd.Series([len(berger_kepler)-np.sum(k), 244, 51, 12, 8, 1]) 
+k = pd.Series([len(berger_kepler)-np.sum(k), 833, 134, 38, 15, 5])
 G = 6.6743e-8 # gravitational constant in cgs
 
 def prior_grid_logslope(cube, ndim, nparams, gi_m, gi_b, gi_c):
@@ -107,7 +108,7 @@ def loglike_direct_draw_better(cube, ndim, nparams, k):
 def unit_test(k, model_flag):
 
 	### use fiducial values of m, b, cutoff, and frac for now to test eccentricity models
-	m = 0.
+	m = -0.25
 	b = 0.5
 	cutoff = 1e10 # yrs
 	frac = 0.4 # fraction of FGK dwarfs with planets
@@ -124,7 +125,7 @@ def unit_test(k, model_flag):
 	print("k: ", list(k))
 
 	# calculate log likelihood
-	logL = better_loglike(list(transit_multiplicity), list(k))
+	logL = better_loglike(list(transit_multiplicity*0.4), list(k))
 	print("logL: ", logL)
 	print("old logL: ", better_loglike([466.8, 72.8, 14.8, 13.2, 7.6, 2.4], k))
 	print("total: ", len(berger_kepler_planets))
@@ -190,8 +191,8 @@ def main(cube, ndim, nparams, k):
 
 	return
 
-#main(cube, ndim, nparams, k)
-
+main(cube, ndim, nparams, k)
+quit()
 
 #### Run unit test to plot and compare different eccentricity distribution assumptions
 
@@ -202,6 +203,7 @@ for row in range(2):
 	for column in range(3):
 		model_flag = models[plot_i]
 		ecc, incl = unit_test(k, model_flag)
+		quit()
 		ax = plt.subplot2grid((2,3), (row,column))
 		im = ax.hexbin(ecc, incl, yscale='log', xscale='log', extent=(-3, 0, -2, 2))
 		fig2 = sns.kdeplot(np.array(ecc), np.array(incl), legend = True, levels=[0.68, 0.95], colors=['black','red'])
@@ -218,4 +220,4 @@ for row in range(2):
 
 		plot_i += 1
 
-plt.savefig('ecc-inc-00-05.png')
+#plt.savefig('ecc-inc-00-05.png')
