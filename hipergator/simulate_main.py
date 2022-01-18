@@ -176,7 +176,7 @@ def main(cube, ndim, nparams, k):
 	for gi_m in range(11):
 		for gi_b in range(11):
 			for gi_c in range(11):
-				output_filename = '/blue/sarahballard/c.lam/sculpting2/simulations2/limbach-hybrid/transits'+str(gi_m)+'_'+str(gi_b)+'_'+str(gi_c)+'_'+str(i)+'.csv'
+				
 				if output_filename not in done: # only run if simulation is not yet done
 					# fetch hyperparams
 					cube = prior_grid_logslope(cube, ndim, nparams, gi_m, gi_b, gi_c)
@@ -185,11 +185,13 @@ def main(cube, ndim, nparams, k):
 					flag = redundancy_check(cube[0], cube[1], cube[2])
 					if flag==False: # do one more simulation, then exit cutoff range
 						for i in range(3):
+							output_filename = '/blue/sarahballard/c.lam/sculpting2/simulations2/limbach-hybrid/transits'+str(gi_m)+'_'+str(gi_b)+'_'+str(gi_c)+'_'+str(i)+'.csv'
 							berger_kepler_planets = model_van_eylen(berger_kepler.iso_age, berger_kepler, 'limbach-hybrid', cube)
 							berger_kepler_planets.to_csv(output_filename)
 						break 
 					else:
 						for i in range(3):
+							output_filename = '/blue/sarahballard/c.lam/sculpting2/simulations2/limbach-hybrid/transits'+str(gi_m)+'_'+str(gi_b)+'_'+str(gi_c)+'_'+str(i)+'.csv'
 							berger_kepler_planets = model_van_eylen(berger_kepler.iso_age, berger_kepler, 'limbach-hybrid', cube)
 							berger_kepler_planets.to_csv(output_filename)
 
