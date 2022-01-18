@@ -182,12 +182,12 @@ def main(cube, ndim, nparams, k):
 				if flag==False: # do one more simulation, then exit cutoff range
 					for i in range(3):
 						berger_kepler_planets = model_van_eylen(berger_kepler.iso_age, berger_kepler, 'limbach-hybrid', cube)
-						berger_kepler_planets.to_csv('/blue/sarahballard/c.lam/sculpting2/simulations/limbach-hybrid/transits'+str(gi_m)+'_'+str(gi_b)+'_'+str(gi_c)+'_'+str(i)+'.csv')
+						berger_kepler_planets.to_csv('/blue/sarahballard/c.lam/sculpting2/simulations2/limbach-hybrid/transits'+str(gi_m)+'_'+str(gi_b)+'_'+str(gi_c)+'_'+str(i)+'.csv')
 					break 
 				else:
 					for i in range(3):
 						berger_kepler_planets = model_van_eylen(berger_kepler.iso_age, berger_kepler, 'limbach-hybrid', cube)
-						berger_kepler_planets.to_csv('/blue/sarahballard/c.lam/sculpting2/simulations/limbach-hybrid/transits'+str(gi_m)+'_'+str(gi_b)+'_'+str(gi_c)+'_'+str(i)+'.csv')
+						berger_kepler_planets.to_csv('/blue/sarahballard/c.lam/sculpting2/simulations2/limbach-hybrid/transits'+str(gi_m)+'_'+str(gi_b)+'_'+str(gi_c)+'_'+str(i)+'.csv')
 
 	return
 
