@@ -32,7 +32,7 @@ berger_kepler = pd.read_csv(path+'berger_kepler_stellar_fgk.csv') # crossmatched
 pnum = pd.read_csv(path+'pnum_plus_cands_fgk.csv') # previously pnum_plus_cands.csv
 pnum = pnum.drop_duplicates(['kepid'])
 k = pnum.koi_count.value_counts() 
-k = pd.Series([len(berger_kepler)-np.sum(k), 244, 51, 12, 8, 1]) 
+#k = pd.Series([len(berger_kepler)-np.sum(k), 244, 51, 12, 8, 1]) 
 k = pd.Series([len(berger_kepler)-np.sum(k), 833, 134, 38, 15, 5])
 G = 6.6743e-8 # gravitational constant in cgs
 
@@ -170,24 +170,28 @@ def main(cube, ndim, nparams, k):
 	- k: ground truth transit multiplicity (Pandas Series)
 	"""
 
+	# ad hoc logic bc HPG ran out of memory and I don't want to redo already-finished simulations
+	done = glob(path+'simulations2/limbach-hybrid/transits*')
+
 	for gi_m in range(11):
 		for gi_b in range(11):
 			for gi_c in range(11):
+				output_filename = '/blue/sarahballard/c.lam/sculpting2/simulations2/limbach-hybrid/transits'+str(gi_m)+'_'+str(gi_b)+'_'+str(gi_c)+'_'+str(i)+'.csv'
+				if output_filename not in done: # only run if simulation is not yet done
+					# fetch hyperparams
+					cube = prior_grid_logslope(cube, ndim, nparams, gi_m, gi_b, gi_c)
 
-				# fetch hyperparams
-				cube = prior_grid_logslope(cube, ndim, nparams, gi_m, gi_b, gi_c)
-
-				# if cutoff occurs more than once after probability has reached zero or if m==0, don't do redundant sims
-				flag = redundancy_check(cube[0], cube[1], cube[2])
-				if flag==False: # do one more simulation, then exit cutoff range
-					for i in range(3):
-						berger_kepler_planets = model_van_eylen(berger_kepler.iso_age, berger_kepler, 'limbach-hybrid', cube)
-						berger_kepler_planets.to_csv('/blue/sarahballard/c.lam/sculpting2/simulations2/limbach-hybrid/transits'+str(gi_m)+'_'+str(gi_b)+'_'+str(gi_c)+'_'+str(i)+'.csv')
-					break 
-				else:
-					for i in range(3):
-						berger_kepler_planets = model_van_eylen(berger_kepler.iso_age, berger_kepler, 'limbach-hybrid', cube)
-						berger_kepler_planets.to_csv('/blue/sarahballard/c.lam/sculpting2/simulations2/limbach-hybrid/transits'+str(gi_m)+'_'+str(gi_b)+'_'+str(gi_c)+'_'+str(i)+'.csv')
+					# if cutoff occurs more than once after probability has reached zero or if m==0, don't do redundant sims
+					flag = redundancy_check(cube[0], cube[1], cube[2])
+					if flag==False: # do one more simulation, then exit cutoff range
+						for i in range(3):
+							berger_kepler_planets = model_van_eylen(berger_kepler.iso_age, berger_kepler, 'limbach-hybrid', cube)
+							berger_kepler_planets.to_csv(output_filename)
+						break 
+					else:
+						for i in range(3):
+							berger_kepler_planets = model_van_eylen(berger_kepler.iso_age, berger_kepler, 'limbach-hybrid', cube)
+							berger_kepler_planets.to_csv(output_filename)
 
 	return
 

@@ -3,7 +3,7 @@
 #SBATCH --mail-type=END          # Mail events (NONE, BEGIN, END, FAIL, ALL)
 #SBATCH --mail-user=c.lam@ufl.edu     # Where to send mail	
 #SBATCH --ntasks=1                    # 
-#SBATCH --mem=2gb                     # Job memory request
+#SBATCH --mem=4gb                     # Job memory request
 #SBATCH --time=88:05:00               # Time limit hrs:min:sec
 #SBATCH --output=simulate_%A_%a.log   # Standard output and error log
 #SBATCH --array=0-10
