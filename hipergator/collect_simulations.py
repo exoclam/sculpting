@@ -12,8 +12,8 @@ from math import lgamma
 #from simulate_main import prior_grid_logslope, better_loglike
 from datetime import datetime
 
-#path = '/blue/sarahballard/c.lam/sculpting2/' # HPG
-path = '/Users/chrislam/Desktop/sculpting/' # local
+path = '/blue/sarahballard/c.lam/sculpting2/' # HPG
+#path = '/Users/chrislam/Desktop/sculpting/' # local
 
 # get ground truth to calculate logLs
 berger_kepler = pd.read_csv(path+'berger_kepler_stellar17.csv') # crossmatched with Gaia via Bedell
@@ -74,7 +74,7 @@ def better_loglike(lam, k):
 
 	return np.sum(logL)
 
-data_path = '/blue/sarahballard/c.lam/sculpting2/simulations/limbach-hybrid/'
+data_path = '/blue/sarahballard/c.lam/sculpting2/simulations2/limbach-hybrid/'
 #print("path: ", path)
 
 # group file names by {m, b, cutoff} simulation
@@ -161,4 +161,4 @@ df_logL = pd.DataFrame({'ms': ms, 'bs': bs, 'cs': cs, 'fs': fs, 'max_logLs': max
 	'mean_logLs': mean_logLs, 'median_logLs': median_logLs, 'std_logLs': std_logLs, 
 	'transit_multiplicities_all': transit_multiplicities_all})
 print(df_logL)
-df_logL.to_csv(path+'logLs.csv', index=False)
+df_logL.to_csv(path+'logLs_fgk.csv', index=False)
