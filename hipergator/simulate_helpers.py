@@ -11,8 +11,8 @@ import random
 from scipy.stats import gaussian_kde, loguniform
 from math import lgamma
 
-path = '/blue/sarahballard/c.lam/sculpting2/'
-#path = '/Users/chrislam/Desktop/sculpting/' # new computer has different username
+#path = '/blue/sarahballard/c.lam/sculpting2/'
+path = '/Users/chrislam/Desktop/sculpting/' # new computer has different username
 
 ### helper conversion functions
 def p_to_a(P, star_mass):
@@ -34,6 +34,16 @@ def solar_radius_to_au(radius):
 
 def earth_radius_to_au(radius):
     return 4.26352e-5*radius
+
+def earth_mass_to_cgs(mass):
+    return mass*5.974e27 # grams
+
+def solar_mass_to_cgs(mass):
+    return mass*1.989e33 # grams
+
+def au_to_cgs(distance):
+    return distance*1.496e13 # cm
+
 
 ### helper main functions
 def compute_prob(x, m, b, cutoff): # adapted from Ballard et al in prep, log version
@@ -221,6 +231,18 @@ def calculate_transit_duration_he(P, star_radius, planet_radius, a, e, omega): #
     arg2 = 1
     return arg1 * arg2
 
+def calculate_amd(m_pks, m_star, a_ks, e_ks, i_ks, multiplicity):
+    ### 
+    # calculate angular momentum deficit following Eqn 13 from Milholland et al 2021
+    ###
+    amd = []
+    for i in range(multiplicity):
+        lambda_k = m_pks[i] * np.sqrt(G*m_star*a_ks[i])
+        second_term = 1 - (np.sqrt(1 - (e_ks[i])**2))*np.cos(i_ks[i])
+        amd.append(lambda_k * second_term)
+        
+    return np.sum(amd)
+    
 ### helper transit detection functions
 def calculate_sn(P, rp, rs, cdpp, tdur, unit_test_flag=False): 
     """
@@ -262,3 +284,5 @@ def draw_cdpp_array(star_radius, df):
     # calculate CDPP by drawing from Kepler dataset relation with star radius
     cdpp = [draw_cdpp(sr, berger_kepler) for sr in star_radius]
     return cdpp
+
+calculate_eccentricity_limbach(2)

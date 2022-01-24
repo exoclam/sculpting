@@ -13,6 +13,8 @@ from math import lgamma
 from simulate_helpers import *
 import matplotlib.pyplot as plt
 
+G = 6.6743e-8 # gravitational constant in cgs
+
 def calculate_transit_unit_test(planet_radius, star_radius, P, e, incl, omega, star_mass, cdpp):
     
     # reformulate P as a in AU
@@ -209,7 +211,7 @@ def calculate_transit_me_with_amd(P, star_radius, planet_radius, e, incl, omega,
     transit_statuses.append(transit_status)
     transit_multiplicities.append(len([ts for ts in transit_status if ts == 1]))
     #transit_multiplicities.append(len([param for param in b if np.abs(param) <= 1.]))
-    
+
     return prob_detections, transit_statuses, transit_multiplicities, sn
 
 def model_direct_draw(cube):
@@ -331,11 +333,6 @@ def model_direct_draw(cube):
         eccentricities.append(eccentricity)
         long_periastrons.append(long_periastron)
         
-        # calculate AMD per system
-        amd = calculate_amd(earth_mass_to_cgs(m_planet), solar_mass_to_cgs(m_star), 
-                        planet_a_case2, eccentricity, inclination_degrees, num_planets)
-        amds.append(amd)
-        
     # calculate AMD per system
     #amds = calculate_amd(earth_mass_to_cgs(m_planet), solar_mass_to_cgs(berger_kepler.iso_mass[0:num_samples]), 
     #                    planets_a_case2, eccentricities, inclinations, num_planets)
@@ -399,6 +396,7 @@ def model_van_eylen(star_age, df, model_flag, cube):
     m, b, cutoff = cube[0], cube[1], cube[2]
 
     periods = [] # the column upon which we'll explode berger_kepler to make berger_kepler_planets
+    a_s = [] #  semi-major axes
     num_planets_all = [] # intrinsic planets
     eccs = []
     incls = []
@@ -407,6 +405,11 @@ def model_van_eylen(star_age, df, model_flag, cube):
     midplanes = []
     intact_flags = []
     mutual_incls = []
+    amds = []
+
+    ### planet ###
+    r_planet = 2. # Earth radii
+    m_planet = 5. # Earth masses; from Chen & Kipping 2016
 
     for age in star_age:
         # sometimes make more than one planet per system
@@ -437,7 +440,7 @@ def model_van_eylen(star_age, df, model_flag, cube):
         # draw period from loguniform distribution from 2 to 300 days
         P = np.array(loguniform.rvs(2, 300, size=num_planets))
         periods.append(P)
-        
+
         # draw inclinations from Gaussian distribution centered on midplane
         incl = np.random.normal(midplane, sigma, num_planets)
         #incl = [np.pi/2 if inc_elt > np.pi/2 else inc_elt for inc_elt in incl] # artificially impose bounds post-facto
@@ -455,7 +458,7 @@ def model_van_eylen(star_age, df, model_flag, cube):
         # draw longitudes of periastron
         omega = np.random.uniform(0, 2*np.pi, num_planets)
         omegas.append(omega)
-        
+
         num_planets_all.append(num_planets)
 
     """
@@ -490,7 +493,8 @@ def model_van_eylen(star_age, df, model_flag, cube):
     berger_kepler_planets['ecc'] = eccs
     berger_kepler_planets['incl'] = incls
     berger_kepler_planets['omega'] = omegas
-    berger_kepler_planets['planet_radius'] = 2.
+    berger_kepler_planets['planet_radius'] = 2. # Earth radii
+    berger_kepler_planets['planet_mass'] = 5. # Earth masses
     berger_kepler_planets['mutual_incl'] = mutual_incls
     #berger_kepler_planets['intact_flag'] = intact_flags
     #print(len(num_planets_all), len(omegas))
@@ -498,6 +502,11 @@ def model_van_eylen(star_age, df, model_flag, cube):
     ###print("ecc: ", berger_kepler_planets['ecc'])
     ###print("incl: ", berger_kepler_planets['incl'])
     ###print("mean ecc and incl: ", np.mean(berger_kepler_planets['ecc']), np.mean(berger_kepler_planets['incl']))
+
+    # AMDs
+    lambda_k_temps = G*solar_mass_to_cgs(berger_kepler_planets['iso_mass'])*au_to_cgs(p_to_a(berger_kepler_planets['P'], berger_kepler_planets.iso_mass)).astype(float)
+    berger_kepler_planets['lambda_ks'] = earth_mass_to_cgs(berger_kepler_planets['planet_mass']) * np.sqrt(lambda_k_temps)
+    berger_kepler_planets['second_terms'] = 1 - (np.sqrt(1 - (berger_kepler_planets['ecc'])**2))*np.cos(berger_kepler_planets['incl'])
 
     prob_detections, transit_statuses, transit_multiplicities, sn = calculate_transit_me_with_amd(berger_kepler_planets.P, 
                             berger_kepler_planets.iso_rad, berger_kepler_planets.planet_radius,
@@ -508,7 +517,9 @@ def model_van_eylen(star_age, df, model_flag, cube):
     
     berger_kepler_planets['transit_status'] = transit_statuses[0]
     berger_kepler_planets['prob_detections'] = prob_detections[0]
+    berger_kepler_planets['transit_multiplicities'] = transit_multiplicities[0]
     berger_kepler_planets['sn'] = sn
+
     return berger_kepler_planets
 
 

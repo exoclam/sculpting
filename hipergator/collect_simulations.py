@@ -21,6 +21,7 @@ pnum = pd.read_csv(path+'pnum_plus_cands.csv')
 pnum = pnum.drop_duplicates(['kepid'])
 k = pnum.koi_count.value_counts() 
 k = pd.Series([len(berger_kepler)-np.sum(k), 244, 51, 12, 8, 1, 0]) 
+k = pd.Series([833, 134, 38, 15, 5, 0])
 print("k: ", k)
 
 # set up hypercube just so I can associate logLs with correct hyperparams
@@ -90,11 +91,14 @@ mean_logLs = []
 median_logLs = []
 std_logLs = []
 transit_multiplicities_all = []
+intact_fracs_all = []
+disrupted_fracs_all = []
 start = datetime.now()
 #print("start: ", start)
 for gi_m in range(11):
 	for gi_b in range(11):
 		for gi_c in range(11):
+			print(gi_m, gi_b, gi_c) # so I know where I am
 
 			sim = glob(data_path+'transits'+str(gi_m)+'_'+str(gi_b)+'_'+str(gi_c)+'_'+'*')
 			cube = prior_grid_logslope(cube, ndim, nparams, gi_m, gi_b, gi_c)
@@ -108,24 +112,37 @@ for gi_m in range(11):
 
 				logLs = []
 				transit_multiplicities = []
+				intact_fracs = []
+				disrupted_fracs = []
 				for i in range(len(sim)):
-					df = pd.read_csv(sim[i], delimiter=',', names=list(range(150))) # handle the few rows of different lengths; most are 150
-					new_header = df.iloc[0] #grab the first row for the header
-					df = df[1:] #take the data less the header row
-					df.columns = new_header #set the header row as the df header
+					#df = pd.read_csv(sim[i], delimiter=',', names=list(range(150))) # handle the few rows of different lengths; most are 150
+					#new_header = df.iloc[0] #grab the first row for the header
+					#df = df[1:] #take the data less the header row
+					#df.columns = new_header #set the header row as the df header
+					df = pd.read_csv(sim[i], delimiter=',')
 
 					# isolate transiting planets
 					transiters_berger_kepler = df.loc[df['transit_status']==1]
 
 					# compute transit multiplicity and save off the original transit multiplicity (pre-frac)
-					transit_multiplicity = transiters_berger_kepler.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid
+					transit_multiplicity = f * transiters_berger_kepler.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid
 					transit_multiplicities.append(list(transit_multiplicity))
 
 					# calculate logLs for different fracs and keep the best one
-					logL = better_loglike(transit_multiplicity*f, k)
+					logL = better_loglike(transit_multiplicity, k)
 					logLs.append(logL)
 
+					# get intact and disrupted fractions (combine them later to get fraction of systems w/o planets)
+					intact = df.loc[df.intact_flag=='intact']
+					disrupted = df.loc[df.intact_flag=='disrupted']
+					intact_frac = f*len(intact)/len(df)
+					disrupted_frac = f*len(disrupted)/len(df)
+					intact_fracs.append(intact_frac)
+					disrupted_fracs.append(disrupted_frac)
+
 				transit_multiplicities_all.append(transit_multiplicities)
+				intact_fracs_all.append(intact_fracs)
+				disrupted_fracs_all.append(disrupted_fracs)
 
 				try:
 					max_logLs.append(max(logLs))
@@ -159,6 +176,7 @@ print(len(transit_multiplicities_all))
 
 df_logL = pd.DataFrame({'ms': ms, 'bs': bs, 'cs': cs, 'fs': fs, 'max_logLs': max_logLs, 'min_logLs': min_logLs, 
 	'mean_logLs': mean_logLs, 'median_logLs': median_logLs, 'std_logLs': std_logLs, 
-	'transit_multiplicities_all': transit_multiplicities_all})
+	'transit_multiplicities_all': transit_multiplicities_all},
+	'intact_fracs_all': intact_fracs_all, 'disrupted_fracs_all': disrupted_fracs_all)
 print(df_logL)
 df_logL.to_csv(path+'logLs_fgk.csv', index=False)
