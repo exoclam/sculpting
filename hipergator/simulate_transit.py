@@ -506,7 +506,7 @@ def model_van_eylen(star_age, df, model_flag, cube):
     # AMDs
     lambda_k_temps = G*solar_mass_to_cgs(berger_kepler_planets['iso_mass'])*au_to_cgs(p_to_a(berger_kepler_planets['P'], berger_kepler_planets.iso_mass)).astype(float)
     berger_kepler_planets['lambda_ks'] = earth_mass_to_cgs(berger_kepler_planets['planet_mass']) * np.sqrt(lambda_k_temps)
-    berger_kepler_planets['second_terms'] = 1 - (np.sqrt(1 - (berger_kepler_planets['ecc'])**2))*np.cos(berger_kepler_planets['incl'])
+    berger_kepler_planets['second_terms'] = 1 - (np.sqrt(1 - (berger_kepler_planets['ecc'])**2))*np.cos(berger_kepler_planets['mutual_incl'])
 
     prob_detections, transit_statuses, transit_multiplicities, sn = calculate_transit_me_with_amd(berger_kepler_planets.P, 
                             berger_kepler_planets.iso_rad, berger_kepler_planets.planet_radius,
