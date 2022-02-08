@@ -12,6 +12,7 @@ from scipy.stats import gaussian_kde, loguniform
 from math import lgamma
 from simulate_helpers import *
 import matplotlib.pyplot as plt
+import timeit 
 
 G = 6.6743e-8 # gravitational constant in cgs
 
@@ -378,6 +379,83 @@ def model_direct_draw(cube):
     lam = lam.to_list()
     geom_lam = geom_lam.to_list()
     return lam, geom_lam, transits, intact_fractions, amds, eccentricities, inclinations_degrees
+
+def model_vectorized(df, model_flag, cube):
+
+    # unpack model parameters from hypercube
+    m, b, cutoff = cube[0], cube[1], cube[2]
+
+    ### planet ###
+    r_planet = 2. # Earth radii
+    m_planet = 5. # Earth masses; from Chen & Kipping 2016
+
+    # assign intact probability to each star
+    df = compute_prob_vectorized(df, m, b, cutoff) # pass in whole df instead of df.iso_age; return df with new column: prob_intact
+    #print(len(df.loc[df.iso_age > 2])) 
+    #print(len(df.loc[np.round(df['prob_intact'], 3)==0.140])) # should be same as above, where fraction changes depending on age vs cutoff
+
+    # generate midplane per star
+    df['midplanes'] = np.random.uniform(-np.pi/2, np.pi/2, len(df))
+
+    # assign intact flag
+    df['intact_flag'] = df.prob_intact.apply(lambda x: assign_intact_flag(x))
+    #df['intact_flag'] = assign_intact_flag(df.prob_intact)
+    #np.random.choice(['intact', 'disrupted'], p=[np.array(df.prob_intact), 1-np.array(df.prob_intact)])
+
+    # assign system-level inclination spread based on intact flag
+    df['sigma'] = np.where(df.intact_flag=='intact', np.pi/90, np.pi/22.5)
+
+    # assign number of planets per system based on intact flag
+    df['num_planets'] = np.where(df.intact_flag=='intact', random.choice([5, 6]), random.choice([1, 2]))
+
+    # draw period from loguniform distribution from 2 to 300 days
+    df['P'] = df.num_planets.apply(lambda x: np.array(loguniform.rvs(2, 300, size=x)))
+    #df['P'] = loguniform.rvs(2,300,size=df.num_planets)
+
+    # draw inclinations from Gaussian distribution centered on midplane (invariable plane)
+    #df['incl'] = df.apply(lambda x, y, z: draw_inclinations_vectorized(x, y, z))
+    df['incl'] = df.apply(lambda x: draw_inclinations_vectorized(x['midplanes'], x['sigma'], x['num_planets']), axis=1)
+
+    # obtain mutual inclinations for plotting to compare {e, i} distributions
+    df['mutual_incl'] = df['midplanes'] - df['incl']
+
+    # draw eccentricity
+    if (model_flag=='limbach-hybrid') | (model_flag=='limbach'):
+        # for drawing eccentricities using Limbach & Turner 2014 CDFs relating e to multiplicity
+        limbach = pd.read_csv(path+'limbach_cdfs.txt', engine='python', header=0, sep='\s{2,20}') # space-agnostic separator
+        df['ecc'] = df.num_planets.apply(lambda x: draw_eccentricity_van_eylen_vectorized(model_flag, x, limbach))
+    else:
+        df['ecc'] = df.num_planets.apply(lambda x: draw_eccentricity_van_eylen_vectorized(model_flag, x))
+
+    # draw longitudes of periastron
+    df['omega'] = df.num_planets.apply(lambda x: np.random.uniform(0, 2*np.pi, x))
+
+    df['planet_radius'] = r_planet # Earth radii
+    df['planet_mass'] = m_planet # Earth masses
+
+    # AMDs
+    
+    ###### EXPLODE ON 'P' COLUMN TO GET AROUND NUMPY ERRORS FOR COLUMNS THAT ARE LISTS OF LISTS ########
+
+    lambda_k_temps = G*solar_mass_to_cgs(df['iso_mass'].apply(pd.to_numeric))*au_to_cgs(p_to_a(df['P'].apply(pd.to_numeric), df.iso_mass.apply(pd.to_numeric)))
+    df['lambda_ks'] = earth_mass_to_cgs(df['planet_mass']) * (lambda_k_temps)**0.5
+    print(df['mutual_incl'])
+    print(np.cos(df.mutual_incl.values))
+    df['second_terms'] = 1 - ((1 - (df['ecc'])**2)**0.5)*np.cos(df['mutual_incl'])
+
+    prob_detections, transit_statuses, transit_multiplicities, sn = calculate_transit_me_with_amd(df.P, 
+                            df.iso_rad, df.planet_radius,
+                            df.ecc, 
+                            df.incl, 
+                            df.omega, df.iso_mass,
+                            df.rrmscdpp06p0, angle_flag=True)
+    
+    df['transit_status'] = transit_statuses[0]
+    df['prob_detections'] = prob_detections[0]
+    df['transit_multiplicities'] = transit_multiplicities[0]
+    df['sn'] = sn
+
+    return df
 
 def model_van_eylen(star_age, df, model_flag, cube):
     """

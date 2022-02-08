@@ -185,7 +185,8 @@ def main(cube, ndim, nparams, k):
 				cube = prior_grid_logslope(cube, ndim, nparams, gi_m, gi_b, gi_c)
 
 				# if cutoff occurs more than once after probability has reached zero or if m==0, don't do redundant sims
-				flag = redundancy_check(cube[0], cube[1], cube[2])
+				#flag = redundancy_check(cube[0], cube[1], cube[2])
+				flag = True
 				if flag==False: # do one more simulation, then exit cutoff range
 					for i in range(3):
 						output_filename = '/blue/sarahballard/c.lam/sculpting2/simulations2/limbach-hybrid/transits'+str(gi_m)+'_'+str(gi_b)+'_'+str(gi_c)+'_'+str(i)+'.csv'

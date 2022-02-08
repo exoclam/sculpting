@@ -67,6 +67,39 @@ def compute_prob(x, m, b, cutoff): # adapted from Ballard et al in prep, log ver
             
     return y
 
+def compute_prob_vectorized(df, m, b, cutoff): # adapted from Ballard et al in prep, log version
+    # calculate probability of intact vs disrupted
+
+    # if/elif/elif/etc in vectorized form
+    """
+    df['prob_intact'] = np.where(
+        df['iso_age']*1e9 <= 1e8, b, np.where(
+            df['iso_age']*1e9 > 1e8, b+m*(np.log10(df['iso_age'])-8), np.where(
+                df['iso_age']*1e9 > cutoff, b+m*(np.log10(cutoff)-8))))
+    """
+
+    df['prob_intact'] = np.where(
+            ((df['iso_age']*1e9 > 1e8) & (df['iso_age']*1e9 <= cutoff)), b+m*(np.log10(df['iso_age'])-8), np.where(
+                df['iso_age']*1e9 > cutoff, b+m*(np.log10(cutoff)-8), b))
+
+    # handle impossible probabilities
+    df['prob_intact'] = np.where(
+        df['prob_intact']<0, 0, np.where(
+            df['prob_intact']>1, 1, df['prob_intact']))
+            
+    return df
+
+def assign_intact_flag(x):
+    # call np.random.choice() for df.apply for model_vectorized()
+    # x: df.prod_intact
+
+    return np.random.choice(['intact', 'disrupted'], p=[x, 1-x])
+
+def draw_inclinations_vectorized(midplane, sigma, num_planets):
+    # call np.random.normal() for df.apply for model_vectorized()
+    # x: 
+    return np.random.normal(midplane, sigma, num_planets)
+
 def redundancy_check(m, b, cutoff):
     # skip simulations if cutoff occurs more than once after probability has reached zero (use the first one for all)
     # also don't vary cutoffs if m is flat   
@@ -101,6 +134,38 @@ def calculate_eccentricity_limbach(multiplicity):
     random_from_cdf = np.logspace(-2,0,101)[value_bins] # select x_d positions based on these random positions
     
     return random_from_cdf
+
+def calculate_eccentricity_limbach_vectorized(multiplicity, limbach):
+    """
+    Draw eccentricities using Limbach & Turner 2014 CDFs relating e to multiplicity
+    Params: multiplicity of system (array of ints); limbach (DataFrame of Limbach & Turner 2014 CDFs)
+    Returns: np.array of eccentricity values with length==multiplicity
+    """
+
+    values = np.random.rand(multiplicity) # draw an eccentricity per planet
+
+    if multiplicity==1:
+        value_bins = np.searchsorted(limbach['1'], values) # return positions in cdf vector where random values should go
+    elif multiplicity==2:
+        value_bins = np.searchsorted(limbach['2'], values) # return positions in cdf vector where random values should go
+    elif multiplicity==5:
+        value_bins = np.searchsorted(limbach['5'], values) # return positions in cdf vector where random values should go
+    elif multiplicity==6:
+        value_bins = np.searchsorted(limbach['6'], values) # return positions in cdf vector where random values should go
+    random_from_cdf = np.logspace(-2,0,101)[value_bins] # select x_d positions based on these random positions
+    #df['ecc'] = df.apply(lambda x: np.logspace(-2,0,101)[value_bins]) # select x_d positions based on these random positions
+    
+    return random_from_cdf
+
+def draw_eccentricity_van_eylen_vectorized(model_flag, num_planets, *args):
+    # *args is optional parameter of the limbach DataFrame for certain model_flags
+
+    if model_flag=='limbach-hybrid':
+        limbach = args[0]
+        sigma_rayleigh = 0.26
+        #draws = np.where(num_planets > 1, calculate_eccentricity_limbach(num_planets), np.random.rayleigh(sigma_rayleigh, num_planets))
+        draws = np.where(num_planets > 1, calculate_eccentricity_limbach_vectorized(num_planets, limbach), np.random.rayleigh(sigma_rayleigh, num_planets))
+    return draws
 
 def draw_eccentricity_van_eylen(model_flag, num_planets):
     """
@@ -242,7 +307,7 @@ def calculate_amd(m_pks, m_star, a_ks, e_ks, i_ks, multiplicity):
         amd.append(lambda_k * second_term)
         
     return np.sum(amd)
-    
+
 ### helper transit detection functions
 def calculate_sn(P, rp, rs, cdpp, tdur, unit_test_flag=False): 
     """
@@ -285,4 +350,4 @@ def draw_cdpp_array(star_radius, df):
     cdpp = [draw_cdpp(sr, berger_kepler) for sr in star_radius]
     return cdpp
 
-calculate_eccentricity_limbach(2)
+#calculate_eccentricity_limbach(2)
