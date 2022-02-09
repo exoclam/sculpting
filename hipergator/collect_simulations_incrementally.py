@@ -177,10 +177,11 @@ def main(filename, f): # one read and write per sim[i] filename
 		#out = np.array((str(m), str(b), str(c), str(f), str(logL), str(list(transit_multiplicity)), str(intact_frac), str(disrupted_frac)))
 		out = np.array((filename, m, b, c, f, logL, list(transit_multiplicity), intact_frac, disrupted_frac, intact_logL, list(intact_transit_multiplicity), disrupted_logL, list(disrupted_transit_multiplicity), young1_logL, list(young1_transit_multiplicity), old1_logL, list(old1_transit_multiplicity), young2_logL, list(young2_transit_multiplicity), old2_logL, list(old2_transit_multiplicity), young3_logL, list(young3_transit_multiplicity), old3_logL, list(old3_transit_multiplicity), young4_logL, list(young4_transit_multiplicity), old4_logL, list(old4_transit_multiplicity), young5_logL, list(young5_transit_multiplicity), old5_logL, list(old5_transit_multiplicity), young6_logL, list(young6_transit_multiplicity), old6_logL, list(old6_transit_multiplicity), young7_logL, list(young7_transit_multiplicity), old7_logL, list(old7_transit_multiplicity), young8_logL, list(young8_transit_multiplicity), old8_logL, list(old8_transit_multiplicity), young9_logL, list(young9_transit_multiplicity), old9_logL, list(old9_transit_multiplicity)))
 		#print(out)
-		np.savetxt(file1, out, fmt='%s', sep='\t', newline='\n')
-		file1.write("\n")
+		np.savetxt(file1, out, fmt='%s', delimiter='\t', newline='\n')
+		#file1.write("\n")
 
-	except:
+	except Exception as e:
+		print(e)
 		print("failed with: ", filename)
 		#df = pd.read_csv(sim[i], delimiter=',', names=list(range(156))) # handle the few rows of different lengths; most are 150
 
@@ -246,7 +247,6 @@ for gi_m in range(11):
 
 					if sys.argv[1]=='new':
 						main(sim[i], f)
-						quit()
 					elif sys.argv[1]=='not-new':
 						if sim[i] in done_file:
 							pass
