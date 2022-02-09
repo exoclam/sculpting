@@ -75,7 +75,7 @@ def better_loglike(lam, k):
 
 	return np.sum(logL)
 
-def main(filename): # one read and write per sim[i] filename
+def main(filename, f): # one read and write per sim[i] filename
 	try:
 		df = pd.read_csv(filename, delimiter=',')
 		# isolate transiting planets
@@ -93,11 +93,91 @@ def main(filename): # one read and write per sim[i] filename
 		intact_frac = f*len(intact)/len(df)
 		disrupted_frac = f*len(disrupted)/len(df)
 
+		# sneak out transit_multiplicity and associated logLs for intact vs disrupted
+		intact_transiting = intact.loc[intact['transit_status']==1]
+		disrupted_transiting = disrupted.loc[disrupted['transit_status']==1]
+		try:
+			intact_transit_multiplicity = f * intact_transiting.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid
+			intact_logL = better_loglike(intact_transit_multiplicity, k)		
+		except:
+			intact_transit_multiplicity = [np.nan] # placeholder that can be removed later
+			intact_logL = np.nan
+		try:
+			disrupted_transit_multiplicity = f * disrupted_transiting.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid
+			disrupted_logL = better_loglike(disrupted_transit_multiplicity, k)
+		except:
+			disrupted_transit_multiplicity = [np.nan] # placeholder that can be removed later
+			disrupted_logL = np.nan
+
+		# sneak out transit_multiplicity and logLs for different age cuts of young vs old
+		young1 = transiters_berger_kepler.loc[transiters_berger_kepler['iso_age'] <= 1.]
+		old1 = transiters_berger_kepler.loc[transiters_berger_kepler['iso_age'] > 1.]
+		young1_transit_multiplicity = f * young1.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid
+		old1_transit_multiplicity = f * old1.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid			
+		young1_logL = better_loglike(young1_transit_multiplicity, k)
+		old1_logL = better_loglike(old1_transit_multiplicity, k)
+
+		young2 = transiters_berger_kepler.loc[transiters_berger_kepler['iso_age'] <= 1.5]
+		old2 = transiters_berger_kepler.loc[transiters_berger_kepler['iso_age'] > 1.5] 
+		young2_transit_multiplicity = f * young2.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid
+		old2_transit_multiplicity = f * old2.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid
+		young2_logL = better_loglike(young2_transit_multiplicity, k)
+		old2_logL = better_loglike(old2_transit_multiplicity, k)	
+
+		young3 = transiters_berger_kepler.loc[transiters_berger_kepler['iso_age'] <= 2.]
+		old3 = transiters_berger_kepler.loc[transiters_berger_kepler['iso_age'] > 2.] 
+		young3_transit_multiplicity = f * young3.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid
+		old3_transit_multiplicity = f * old3.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid
+		young3_logL = better_loglike(young3_transit_multiplicity, k)
+		old3_logL = better_loglike(old3_transit_multiplicity, k)
+
+		young4 = transiters_berger_kepler.loc[transiters_berger_kepler['iso_age'] <= 2.5]
+		old4 = transiters_berger_kepler.loc[transiters_berger_kepler['iso_age'] > 2.5] 
+		young4_transit_multiplicity = f * young4.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid
+		old4_transit_multiplicity = f * old4.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid
+		young4_logL = better_loglike(young4_transit_multiplicity, k)
+		old4_logL = better_loglike(old4_transit_multiplicity, k)
+
+		young5 = transiters_berger_kepler.loc[transiters_berger_kepler['iso_age'] <= 3.]
+		old5 = transiters_berger_kepler.loc[transiters_berger_kepler['iso_age'] > 3.] 
+		young5_transit_multiplicity = f * young5.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid
+		old5_transit_multiplicity = f * old5.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid
+		young5_logL = better_loglike(young5_transit_multiplicity, k)
+		old5_logL = better_loglike(old5_transit_multiplicity, k)
+
+		young6 = transiters_berger_kepler.loc[transiters_berger_kepler['iso_age'] <= 3.5]
+		old6 = transiters_berger_kepler.loc[transiters_berger_kepler['iso_age'] > 3.5] 
+		young6_transit_multiplicity = f * young6.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid
+		old6_transit_multiplicity = f * old6.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid
+		young6_logL = better_loglike(young6_transit_multiplicity, k)
+		old6_logL = better_loglike(old6_transit_multiplicity, k)
+
+		young7 = transiters_berger_kepler.loc[transiters_berger_kepler['iso_age'] <= 4.]
+		old7 = transiters_berger_kepler.loc[transiters_berger_kepler['iso_age'] > 4.] 
+		young7_transit_multiplicity = f * young7.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid
+		old7_transit_multiplicity = f * old7.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid
+		young7_logL = better_loglike(young7_transit_multiplicity, k)
+		old7_logL = better_loglike(old7_transit_multiplicity, k)
+
+		young8 = transiters_berger_kepler.loc[transiters_berger_kepler['iso_age'] <= 4.5]
+		old8 = transiters_berger_kepler.loc[transiters_berger_kepler['iso_age'] > 4.5] 
+		young8_transit_multiplicity = f * young8.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid
+		old8_transit_multiplicity = f * old8.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid
+		young8_logL = better_loglike(young8_transit_multiplicity, k)
+		old8_logL = better_loglike(old8_transit_multiplicity, k)
+
+		young9 = transiters_berger_kepler.loc[transiters_berger_kepler['iso_age'] <= 5.]
+		old9 = transiters_berger_kepler.loc[transiters_berger_kepler['iso_age'] > 5.] 
+		young9_transit_multiplicity = f * young9.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid
+		old9_transit_multiplicity = f * old9.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid
+		young9_logL = better_loglike(young9_transit_multiplicity, k)
+		old9_logL = better_loglike(old9_transit_multiplicity, k)
+
 		# output
-	    #out = np.array((str(m), str(b), str(c), str(f), str(logL), str(list(transit_multiplicity)), str(intact_frac), str(disrupted_frac)))
-		out = np.array((filename, m, b, c, f, logL, list(transit_multiplicity), intact_frac, disrupted_frac))
-	    #print(out)
-		np.savetxt(file1, out, fmt='%s', newline='\t')
+		#out = np.array((str(m), str(b), str(c), str(f), str(logL), str(list(transit_multiplicity)), str(intact_frac), str(disrupted_frac)))
+		out = np.array((filename, m, b, c, f, logL, list(transit_multiplicity), intact_frac, disrupted_frac, intact_logL, list(intact_transit_multiplicity), disrupted_logL, list(disrupted_transit_multiplicity), young1_logL, list(young1_transit_multiplicity), old1_logL, list(old1_transit_multiplicity), young2_logL, list(young2_transit_multiplicity), old2_logL, list(old2_transit_multiplicity), young3_logL, list(young3_transit_multiplicity), old3_logL, list(old3_transit_multiplicity), young4_logL, list(young4_transit_multiplicity), old4_logL, list(old4_transit_multiplicity), young5_logL, list(young5_transit_multiplicity), old5_logL, list(old5_transit_multiplicity), young6_logL, list(young6_transit_multiplicity), old6_logL, list(old6_transit_multiplicity), young7_logL, list(young7_transit_multiplicity), old7_logL, list(old7_transit_multiplicity), young8_logL, list(young8_transit_multiplicity), old8_logL, list(old8_transit_multiplicity), young9_logL, list(young9_transit_multiplicity), old9_logL, list(old9_transit_multiplicity)))
+		#print(out)
+		np.savetxt(file1, out, fmt='%s', sep='\t', newline='\n')
 		file1.write("\n")
 
 	except:
@@ -106,7 +186,7 @@ def main(filename): # one read and write per sim[i] filename
 
 	return
 
-
+#data_path = 'home/c.lam/blue/sculpting2/simulations2/limbach-hybrid/'
 data_path = '/blue/sarahballard/c.lam/sculpting2/simulations2/limbach-hybrid/'
 #print("path: ", path)
 
@@ -123,22 +203,26 @@ fs = []
 
 #done = glob(path+'simulations2/limbach-hybrid/transits*')
 if sys.argv[1] == 'new':
-	file1 = open(path+"logLs_incremental.txt", "w") # "a" if appending, but then comment out the header and add a newline
-	file1.write(path+"filename,m,b,c,f,logL,transit_multiplicity,intact_frac,disrupted_frac\n") # header
+	file1 = open(path+"logLs_incremental_w_splits.txt", "w") # "a" if appending, but then comment out the header and add a newline
+	file1.write("filename,m,b,c,f,logL,transit_multiplicity,intact_frac,disrupted_frac,intact_logL,intact_transit_multiplicity,disrupted_logL,disrupted_transit_multiplicity,young10_logL,young10_transit_multiplicity,old10_logL,old10_transit_multiplicity,young15_logL,young15_transit_multiplicity,old15_logL,old15_transit_multiplicity,young20_logL,young20_transit_multiplicity,old20_logL,old20_transit_multiplicity,young25_logL,young25_transit_multiplicity,old25_logL,old25_transit_multiplicity,young30_logL,young30_transit_multiplicity,old30_logL,old30_transit_multiplicity,young35_logL,young35_transit_multiplicity,old35_logL,old35_transit_multiplicity,young40_logL,young40_transit_multiplicity,old40_logL,old40_transit_multiplicity,young45_logL,young45_transit_multiplicity,old45_logL,old45_transit_multiplicity,young50_logL,young50_transit_multiplicity,old50_logL,old50_transit_multiplicity\n") # header
 
 elif sys.argv[1] == 'not-new':
 	# open existing file to resume collecting
+	df_logLs = pd.read_csv(path+'logLs_incremental.txt',sep='\s+',on_bad_lines='skip')
+	#print(len(df_logLs))
+	#quit()
+	
 	try:
 		df_logLs = pd.read_csv(path+'logLs_incremental.txt')
 		done_file = df_logLs.filename
 	except:
 		print("logLs_incremental.txt doesn't exist; run this file without this code block or the accompanying check first!")
+	#quit()
 
 	file1 = open(path+"logLs_incremental.txt", "a") 
 	file1.write("\n") # start a new line
 
 start = datetime.now()
-#print("start: ", start)
 for gi_m in range(11):
 	for gi_b in range(11):
 		for gi_c in range(11):
@@ -161,8 +245,14 @@ for gi_m in range(11):
 					#df.columns = new_header #set the header row as the df header
 
 					if sys.argv[1]=='new':
-						main(sim[i])
-
+						main(sim[i], f)
+						quit()
+					elif sys.argv[1]=='not-new':
+						if sim[i] in done_file:
+							pass
+						else:
+							main(sim[i], f)	
+					"""			
 					elif sys.argv[1]=='not-new':
 						if sim[i] in done_file:
 							df_logL = df_logLs.loc[df_logLs.filename==sim[i]]
@@ -172,5 +262,6 @@ for gi_m in range(11):
 								pass
 						else:
 							main(sim[i])
+					"""
 
 file1.close()
