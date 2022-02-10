@@ -21,10 +21,11 @@ path = '/Users/chrislam/Desktop/sculpting/'
 berger_kepler = pd.read_csv(path+'berger_kepler_stellar_fgk.csv') # crossmatched with Gaia via Bedell, previously berger_kepler_stellar17.csv
 pnum = pd.read_csv(path+'pnum_plus_cands_fgk.csv') # previously pnum_plus_cands.csv
 pnum = pnum.drop_duplicates(['kepid'])
-k = pnum.koi_count.value_counts() 
+#k = pnum.koi_count.value_counts() 
 #k = pd.Series([len(berger_kepler)-np.sum(k), 244, 51, 12, 8, 1]) # 20K stars from 1 Gyr age error cuts
-k = pd.Series([len(berger_kepler)-np.sum(k), 833, 134, 38, 15, 5]) # 60K stars from 0.56 fractional age error cuts
-k = list(k) # NOTE: THIS INCLUDES THE ZERO BIN
+#k = pd.Series([len(berger_kepler)-np.sum(k), 833, 134, 38, 15, 5]) # 60K stars from 0.56 fractional age error cuts
+k = [833, 134, 38, 15, 5, 0]
+#k = list(k) # NOTE: THIS INCLUDES THE ZERO BIN
 G = 6.6743e-8 # gravitational constant in cgs
 #ndim = 4
 #nparams = 4
@@ -90,6 +91,32 @@ def loglike(cube, ndim, nparams):
 			logL.append(term1+term2+term3)
 
 	return np.sum(logL)
+
+def loglike_test(lam, k):
+	logL = []
+	#print(lam)
+	for i in range(len(lam)):
+		if lam[i]==0: 	# Changed 0 handling from simulate.py to reflect https://www.aanda.org/articles/aa/pdf/2009/16/aa8472-07.pdf   
+			term3 = -lgamma(k[i]+1)
+			term2 = -lam[i]
+			term1 = 0
+			logL.append(term1+term2+term3)
+		else:
+			term3 = -lgamma(k[i]+1)
+			term2 = -lam[i]
+			term1 = k[i]*np.log(lam[i])
+			logL.append(term1+term2+term3)
+		print("contribution: ", term1+term2+term3)
+
+	return np.sum(logL)
+
+lam1 = [933.7138336347197, 91.28616636528031]
+lam2 = [866.0176701570681, 112.24912739965096, 23.031195462478184, 17.664703315881326, 4.24847294938918, 1.7888307155322862]
+print("TEST 1")
+loglike_test(np.array(lam1)*2, np.array(k)*2)
+print("TEST 2")
+loglike_test(np.array(lam2)*2, np.array(k)*2)
+quit()
 
 
 # number of dimensions our problem has

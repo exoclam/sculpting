@@ -591,7 +591,7 @@ def model_van_eylen(star_age, df, model_flag, cube):
                             berger_kepler_planets.ecc, 
                             berger_kepler_planets.incl, 
                             berger_kepler_planets.omega, berger_kepler_planets.iso_mass,
-                            berger_kepler_planets.rrmscdpp06p0, angle_flag=True)
+                            berger_kepler_planets.rrmscdpp06p0, angle_flag=True) # was np.ones(len(berger_kepler_planets))*131.4
     
     berger_kepler_planets['transit_status'] = transit_statuses[0]
     berger_kepler_planets['prob_detections'] = prob_detections[0]

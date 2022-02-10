@@ -118,12 +118,13 @@ def unit_test(k, model_flag):
     berger_kepler_planets = model_van_eylen(berger_kepler.iso_age, berger_kepler, model_flag, cube)
     transiters_berger_kepler = berger_kepler_planets.loc[berger_kepler_planets['transit_status']==1]
     transit_multiplicity = frac*transiters_berger_kepler.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid
-    berger_kepler_planets.to_csv('transits02_04_04_25.csv')
+    #berger_kepler_planets.to_csv('transits02_04_04_25.csv')
     
     # make sure the 6-multiplicity bin is filled in with zero and ignore zero-bin
     k[6] = 0
     k = k[1:].reset_index()[0]
     print("transit multiplicity: ", list(transit_multiplicity))
+    quit()
     print("k: ", list(k))
 
     # calculate log likelihood
@@ -149,6 +150,13 @@ def unit_test(k, model_flag):
     plt.savefig('ecc-inc-test.png')
     """
     return berger_kepler_planets.ecc, np.abs(berger_kepler_planets.mutual_incl)*180/np.pi, berger_kepler_planets
+
+
+#### Compare CDPP sampling methods
+unit_test(k, 'limbach-hybrid')
+quit()
+
+
 
 #### Run unit test to plot and compare different eccentricity distribution assumptions
 """
