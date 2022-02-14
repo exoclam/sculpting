@@ -110,14 +110,33 @@ def loglike_test(lam, k):
 
 	return np.sum(logL)
 
-lam1 = [933.7138336347197, 91.28616636528031]
-lam2 = [866.0176701570681, 112.24912739965096, 23.031195462478184, 17.664703315881326, 4.24847294938918, 1.7888307155322862]
-print("TEST 1")
-loglike_test(np.array(lam1)*2, np.array(k)*2)
-print("TEST 2")
-loglike_test(np.array(lam2)*2, np.array(k)*2)
-quit()
+def likelihood_test(lam, k):
+	likelihood = 1
+	for i in range(len(lam)):
+		term1 = np.exp(-lam[i])
+		term2 = 1/(np.math.factorial(k[i]))
+		term3 = lam[i]**k[i]
+		contribution = term1*term2*term3
+		print(contribution)
+		likelihood *= contribution
 
+	return likelihood
+
+
+"""
+### UNIT TESTING
+lam1 = [933.7138336347197, 91.28616636528031]
+lam1 += [0] * (len(k) - len(lam1)) # pad with zeros to match length of k
+lam2 = [866.0176701570681, 112.24912739965096, 23.031195462478184, 17.664703315881326, 4.24847294938918, 1.7888307155322862]
+print("lams: ", lam1, lam2)
+print("TEST 1")
+print("logL: ", loglike_test(np.array(lam1)*2, np.array(k)*2))
+#print("likelihood: ", likelihood_test(np.array(lam1)*2, np.array(k)*2))
+print("TEST 2")
+print("logL: ", loglike_test(np.array(lam2)*2, np.array(k)*2))
+#print("likelihood: ", likelihood_test(np.array(lam2)*2, np.array(k)*2))
+quit()
+"""
 
 # number of dimensions our problem has
 parameters = ['m','b','c','f']

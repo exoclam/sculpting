@@ -59,7 +59,10 @@ def better_loglike(lam, k):
 	"""
 
 	logL = []
-	#print(lam)
+	print("old lam: ", lam)
+	lam += [0] * (len(k) - len(lam)) # pad with zeros to match length of k
+	print("new lam: ", lam)
+	quit()
 	for i in range(len(lam)):
 		if lam[i]==0:
 			term3 = -lgamma(k[i]+1)
