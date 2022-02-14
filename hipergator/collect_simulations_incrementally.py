@@ -59,10 +59,10 @@ def better_loglike(lam, k):
 	"""
 
 	logL = []
-	print("old lam: ", lam)
-	lam += [0] * (len(k) - len(lam)) # pad with zeros to match length of k
-	print("new lam: ", lam)
-	quit()
+	lam = lam.tolist()
+	#print("old lam: ", lam)
+	lam += [0.] * (len(k) - len(lam)) # pad with zeros to match length of k
+	#print("new lam: ", lam)
 	for i in range(len(lam)):
 		if lam[i]==0:
 			term3 = -lgamma(k[i]+1)
@@ -179,7 +179,7 @@ def main(filename, f): # one read and write per sim[i] filename
 		# output
 		#out = np.array((str(m), str(b), str(c), str(f), str(logL), str(list(transit_multiplicity)), str(intact_frac), str(disrupted_frac)))
 		out = np.array((filename, m, b, c, f, logL, list(transit_multiplicity), intact_frac, disrupted_frac, intact_logL, list(intact_transit_multiplicity), disrupted_logL, list(disrupted_transit_multiplicity), young1_logL, list(young1_transit_multiplicity), old1_logL, list(old1_transit_multiplicity), young2_logL, list(young2_transit_multiplicity), old2_logL, list(old2_transit_multiplicity), young3_logL, list(young3_transit_multiplicity), old3_logL, list(old3_transit_multiplicity), young4_logL, list(young4_transit_multiplicity), old4_logL, list(old4_transit_multiplicity), young5_logL, list(young5_transit_multiplicity), old5_logL, list(old5_transit_multiplicity), young6_logL, list(young6_transit_multiplicity), old6_logL, list(old6_transit_multiplicity), young7_logL, list(young7_transit_multiplicity), old7_logL, list(old7_transit_multiplicity), young8_logL, list(young8_transit_multiplicity), old8_logL, list(old8_transit_multiplicity), young9_logL, list(young9_transit_multiplicity), old9_logL, list(old9_transit_multiplicity)))
-		#print(out)
+		out = out.reshape(1, len(out))
 		np.savetxt(file1, out, fmt='%s', delimiter='\t', newline='\n')
 		#file1.write("\n")
 
@@ -207,23 +207,23 @@ fs = []
 
 #done = glob(path+'simulations2/limbach-hybrid/transits*')
 if sys.argv[1] == 'new':
-	file1 = open(path+"logLs_incremental_w_splits.txt", "w") # "a" if appending, but then comment out the header and add a newline
+	file1 = open(path+"logLs_incremental_corrected.txt", "w") # "a" if appending, but then comment out the header and add a newline
 	file1.write("filename,m,b,c,f,logL,transit_multiplicity,intact_frac,disrupted_frac,intact_logL,intact_transit_multiplicity,disrupted_logL,disrupted_transit_multiplicity,young10_logL,young10_transit_multiplicity,old10_logL,old10_transit_multiplicity,young15_logL,young15_transit_multiplicity,old15_logL,old15_transit_multiplicity,young20_logL,young20_transit_multiplicity,old20_logL,old20_transit_multiplicity,young25_logL,young25_transit_multiplicity,old25_logL,old25_transit_multiplicity,young30_logL,young30_transit_multiplicity,old30_logL,old30_transit_multiplicity,young35_logL,young35_transit_multiplicity,old35_logL,old35_transit_multiplicity,young40_logL,young40_transit_multiplicity,old40_logL,old40_transit_multiplicity,young45_logL,young45_transit_multiplicity,old45_logL,old45_transit_multiplicity,young50_logL,young50_transit_multiplicity,old50_logL,old50_transit_multiplicity\n") # header
 
 elif sys.argv[1] == 'not-new':
 	# open existing file to resume collecting
-	df_logLs = pd.read_csv(path+'logLs_incremental.txt',sep='\s+',on_bad_lines='skip')
+	df_logLs = pd.read_csv(path+'logLs_incremental_corrected.txt',sep='\s+',on_bad_lines='skip')
 	#print(len(df_logLs))
 	#quit()
 	
 	try:
-		df_logLs = pd.read_csv(path+'logLs_incremental.txt')
+		df_logLs = pd.read_csv(path+'logLs_incremental_corrected.txt')
 		done_file = df_logLs.filename
 	except:
 		print("logLs_incremental.txt doesn't exist; run this file without this code block or the accompanying check first!")
 	#quit()
 
-	file1 = open(path+"logLs_incremental.txt", "a") 
+	file1 = open(path+"logLs_incremental_corrected.txt", "a") 
 	file1.write("\n") # start a new line
 
 start = datetime.now()

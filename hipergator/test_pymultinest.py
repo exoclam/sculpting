@@ -106,7 +106,7 @@ def loglike_test(lam, k):
 			term2 = -lam[i]
 			term1 = k[i]*np.log(lam[i])
 			logL.append(term1+term2+term3)
-		print("contribution: ", term1+term2+term3)
+		print("contributions: ", term1, term2, term3)
 
 	return np.sum(logL)
 
@@ -123,7 +123,7 @@ def likelihood_test(lam, k):
 	return likelihood
 
 
-"""
+
 ### UNIT TESTING
 lam1 = [933.7138336347197, 91.28616636528031]
 lam1 += [0] * (len(k) - len(lam1)) # pad with zeros to match length of k
@@ -136,7 +136,7 @@ print("TEST 2")
 print("logL: ", loglike_test(np.array(lam2)*2, np.array(k)*2))
 #print("likelihood: ", likelihood_test(np.array(lam2)*2, np.array(k)*2))
 quit()
-"""
+
 
 # number of dimensions our problem has
 parameters = ['m','b','c','f']
