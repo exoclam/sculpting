@@ -457,7 +457,7 @@ def model_vectorized(df, model_flag, cube):
 
     return df
 
-def model_van_eylen(star_age, df, model_flag, cube):
+def model_van_eylen(k, star_age, df, model_flag, cube):
     """
     Enrich berger_kepler DataFrame with planet parameters like ecc, incl, etc.
     Params: 
@@ -595,7 +595,8 @@ def model_van_eylen(star_age, df, model_flag, cube):
     
     berger_kepler_planets['transit_status'] = transit_statuses[0]
     berger_kepler_planets['prob_detections'] = prob_detections[0]
-    berger_kepler_planets['transit_multiplicities'] = transit_multiplicities[0]
+    transit_multiplicities += [0.] * (len(k) - len(transit_multiplicities)) # pad with zeros to match length of k
+    berger_kepler_planets['transit_multiplicities'] = transit_multiplicities #[0]
     berger_kepler_planets['sn'] = sn
 
     return berger_kepler_planets

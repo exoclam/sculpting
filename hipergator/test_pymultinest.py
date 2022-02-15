@@ -17,7 +17,8 @@ import matplotlib.pyplot as plt
 from simulate_transit import * 
 from simulate_helpers import *
 
-path = '/Users/chrislam/Desktop/sculpting/' 
+path = '/blue/sarahballard/c.lam/sculpting2/' # HPG
+#path = '/Users/chrislam/Desktop/sculpting/' 
 berger_kepler = pd.read_csv(path+'berger_kepler_stellar_fgk.csv') # crossmatched with Gaia via Bedell, previously berger_kepler_stellar17.csv
 pnum = pd.read_csv(path+'pnum_plus_cands_fgk.csv') # previously pnum_plus_cands.csv
 pnum = pnum.drop_duplicates(['kepid'])
@@ -44,13 +45,13 @@ def prior(cube, ndim, nparams):
 	cube[1] = cube[1] # linear from 0 to 1
 	cube[2] = 10**(cube[2]*2 + 8) # log from 10^8 to 10^10
 	#cube[2] = np.logspace(8,10,11)[gi_c] # in Ballard et al in prep, they use log(yrs) instead of drawing yrs from logspace
-	cube[3] = cube[3] # linear from 0 to 1
+	cube[3] = cube[3]*0.4 # linear from 0 to 0.4
 
 	return cube
 
 def model(iso_age, berger_kepler, model_flag, cube):
 	# wrap model_van_eylen() for convenience within the pymultinest framework
-	berger_kepler_planets = model_van_eylen(iso_age, berger_kepler, model_flag, cube)
+	berger_kepler_planets = model_van_eylen(k, iso_age, berger_kepler, model_flag, cube)
 	transiters_berger_kepler = berger_kepler_planets.loc[berger_kepler_planets['transit_status']==1]
 	transit_multiplicity = transiters_berger_kepler.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid
 	transit_multiplicity = list(transit_multiplicity*cube[3])
@@ -123,7 +124,7 @@ def likelihood_test(lam, k):
 	return likelihood
 
 
-
+"""
 ### UNIT TESTING
 lam1 = [933.7138336347197, 91.28616636528031]
 lam1 += [0] * (len(k) - len(lam1)) # pad with zeros to match length of k
@@ -136,7 +137,7 @@ print("TEST 2")
 print("logL: ", loglike_test(np.array(lam2)*2, np.array(k)*2))
 #print("likelihood: ", likelihood_test(np.array(lam2)*2, np.array(k)*2))
 quit()
-
+"""
 
 # number of dimensions our problem has
 parameters = ['m','b','c','f']
@@ -144,21 +145,21 @@ nparams = len(parameters)
 
 
 # run MultiNest
-pymultinest.run(loglike, prior, nparams, outputfiles_basename=path+'pymultinest/test' + '_1_', resume = False, verbose = True)
-json.dump(parameters, open(path+'pymultinest/test' + '_1_params.json', 'w')) # save parameter names
+pymultinest.run(loglike, prior, nparams, outputfiles_basename=path+'pymultinest_long_run/test' + '_1_', resume = False, verbose = True)
+json.dump(parameters, open(path+'pymultinest_long_run/test' + '_1_params.json', 'w')) # save parameter names
 
 
 # plot the distribution of a posteriori possible models
 plt.figure() 
 plt.scatter(np.arange(6), k, '+ ', color='red', label='data')
-a = pymultinest.Analyzer(outputfiles_basename=path+'pymultinest/test' + '_1_', n_params = nparams)
+a = pymultinest.Analyzer(outputfiles_basename=path+'pymultinest_long_run/test' + '_1_', n_params = nparams)
 for (m, b, c, f) in a.get_equal_weighted_posterior()[::100,:-1]:
 	try:
 		plt.plot(np.arange(6), model(berger_kepler.iso_age, berger_kepler, model_flag, [m,b,c,f]), '-', color='blue', alpha=0.3, label='model')
 	except:
 		plt.plot(np.arange(7), model(berger_kepler.iso_age, berger_kepler, model_flag, [m,b,c,f]), '-', color='blue', alpha=0.3, label='model')
 
-plt.savefig(path+ 'pymultinest/test' + '_1_posterior.pdf')
+plt.savefig(path+ 'pymultinest_long_run/test' + '_1_posterior.pdf')
 plt.close()
 
 
