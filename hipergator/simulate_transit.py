@@ -13,6 +13,7 @@ from math import lgamma
 from simulate_helpers import *
 import matplotlib.pyplot as plt
 import timeit 
+from datetime import datetime
 
 G = 6.6743e-8 # gravitational constant in cgs
 
@@ -121,7 +122,7 @@ def calculate_transit_array(star_radius, P, e, incl, omega, star_mass, planet_ra
     
     # calculate SN based on Eqn 4 in Christiansen et al 2012
     sn = calculate_sn(P, planet_radius, star_radius, cdpps, tdur, unit_test_flag=False)
-    print("number of nonzero SN: ", len(np.where(sn>0)[0]))
+    #print("number of nonzero SN: ", len(np.where(sn>0)[0]))
     
     # calculate Fressin detection probability based on S/N
     #ts2 = [1 if sn_elt >= 7.1 else 0 for sn_elt in sn] # S/N threshold before Fressin et al 2013
@@ -194,8 +195,12 @@ def calculate_transit_me_with_amd(P, star_radius, planet_radius, e, incl, omega,
     
     # calculate SN based on Eqn 4 in Christiansen et al 2012
     sn = calculate_sn(P, planet_radius, star_radius, cdpps, tdur, unit_test_flag=False)
-    ###print("number of nonzero SN: ", len(np.where(sn>0)[0]))
-    
+    #print(sn)
+    #end = datetime.now()
+    #print("END: ", end)
+    #print("number of nonzero SN: ", len(np.where(sn>0)[0]))
+    #quit()
+
     # calculate Fressin detection probability based on S/N
     #ts2 = [1 if sn_elt >= 7.1 else 0 for sn_elt in sn] # S/N threshold before Fressin et al 2013
     #prob_detection = np.array([0.1*(sn_elt-6) for sn_elt in sn]) # S/N threshold using Fressin et al 2013
@@ -210,10 +215,74 @@ def calculate_transit_me_with_amd(P, star_radius, planet_radius, e, incl, omega,
     #transit_status = [ts1_elt * ts2_elt for ts1_elt, ts2_elt in zip(ts1, ts2)]
     transit_status = [np.random.choice([1, 0], p=[pd, 1-pd]) for pd in prob_detection]
     transit_statuses.append(transit_status)
-    transit_multiplicities.append(len([ts for ts in transit_status if ts == 1]))
+    transit_multiplicities.append(len([ts for ts in transit_status if ts == 1])) # what's the point of this line again??
     #transit_multiplicities.append(len([param for param in b if np.abs(param) <= 1.]))
 
     return prob_detections, transit_statuses, transit_multiplicities, sn
+
+def calculate_transit_vectorized(P, star_radius, planet_radius, e, incl, omega, star_mass, cdpps, angle_flag):
+    """
+    Params: columns of the berger_kepler dataframe
+    Returns:
+    - Probabilities of detection: Numpy array
+    - Transit statuses: Numpy array
+    - Transit multiplicities (lambdas for calculating logLs): Numpy array
+    - S/N ratios: Numpy array
+    """
+
+    #print(P, star_radius, planet_radius, e, incl, omega, star_mass, cdpps)
+    prob_detections = []
+    transit_statuses = []
+    transit_multiplicities = []
+    #planet_radius = 2.       
+    
+    # reformulate P as a in AU
+    a = p_to_a(P, star_mass)
+    
+    # calculate impact parameters; distance units in solar radii
+    b = calculate_impact_parameter_vectorized(star_radius, a, e, incl, omega, angle_flag)
+    
+    # make sure arrays have explicitly float elements
+    planet_radius = planet_radius.astype(float)
+    star_radius = star_radius.astype(float)
+    a = a.astype(float)
+    
+    # calculate transit durations using Winn 2011 formula; same units as period
+    #tdur = calculate_transit_duration(P, solar_radius_to_au(star_radius), 
+    #                        earth_radius_to_au(planet_radius), b, a, incl, e, omega)
+    # Matthias's planet params are in solar units
+    tdur = calculate_transit_duration_vectorized(P, solar_radius_to_au(star_radius), 
+        earth_radius_to_au(planet_radius), b, a, incl, e, omega, angle_flag)
+    
+    # calculate CDPP by drawing from Kepler dataset relation with star radius
+    #cdpp = [draw_cdpp(sr, berger_kepler) for sr in star_radius]
+    
+    # calculate SN based on Eqn 4 in Christiansen et al 2012
+    sn = calculate_sn_vectorized(P, planet_radius, star_radius, cdpps, tdur, unit_test_flag=False)
+    #print("number of nonzero SN: ", len(np.where(sn>0)[0]))
+    
+    # calculate Fressin detection probability based on S/N
+    #ts2 = [1 if sn_elt >= 7.1 else 0 for sn_elt in sn] # S/N threshold before Fressin et al 2013
+    #prob_detection = np.array([0.1*(sn_elt-6) for sn_elt in sn]) # S/N threshold using Fressin et al 2013
+    #prob_detection[np.isnan(prob_detection)] = 0 # replace NaNs with zeros
+    prob_detection = 0.1*(sn-6) # vectorize
+    #print(prob_detection.apply(pd.Series).stack().reset_index(drop=True))
+
+    prob_detection = np.where(prob_detection < 0., 0., prob_detection) # replace negative probs with zeros
+    # actually, replace all probabilities under 5% with 5% to avoid over-penalizing models which terminate at 0% too early
+    prob_detection = np.where(prob_detection > 1, 1, prob_detection) # replace probs > 1 with just 1
+    prob_detections.append(prob_detection)
+    #print(prob_detections)
+    #quit()
+
+    # sample transit status and multiplicity based on Fressin detection probability
+    #transit_status = [ts1_elt * ts2_elt for ts1_elt, ts2_elt in zip(ts1, ts2)]
+    transit_status = [np.random.choice([1, 0], p=[pd, 1-pd]) for pd in prob_detection]
+    transit_statuses.append(transit_status)
+    #transit_multiplicities.append(len([ts for ts in transit_status if ts == 1]))
+    #transit_multiplicities.append(len([param for param in b if np.abs(param) <= 1.]))
+
+    return prob_detections, transit_statuses, sn
 
 def model_direct_draw(cube):
     """
@@ -433,10 +502,57 @@ def model_vectorized(df, model_flag, cube):
     df['planet_radius'] = r_planet # Earth radii
     df['planet_mass'] = m_planet # Earth masses
 
-    # AMDs
-    
     ###### EXPLODE ON 'P' COLUMN TO GET AROUND NUMPY ERRORS FOR COLUMNS THAT ARE LISTS OF LISTS ########
+    #berger_kepler_planets = df.explode('P')
+    #print(berger_kepler_planets)
+    #berger_kepler_planets = df.explode('P', '')
+    #print(berger_kepler_planets)
+    berger_kepler_planets = df.apply(pd.Series.explode)
+    print(berger_kepler_planets)
 
+    """
+    # AMDs
+    lambda_k_temps = G*solar_mass_to_cgs(berger_kepler_planets['iso_mass'])*au_to_cgs(p_to_a(berger_kepler_planets['P'], berger_kepler_planets.iso_mass)).astype(float)
+    berger_kepler_planets['lambda_ks'] = earth_mass_to_cgs(berger_kepler_planets['planet_mass']) * np.sqrt(lambda_k_temps)
+    berger_kepler_planets['second_terms'] = 1 - (np.sqrt(1 - (berger_kepler_planets['ecc'])**2))*np.cos(berger_kepler_planets['mutual_incl'])
+
+    prob_detections, transit_statuses, transit_multiplicities, sn = calculate_transit_me_with_amd(berger_kepler_planets.P, 
+                            berger_kepler_planets.iso_rad, berger_kepler_planets.planet_radius,
+                            berger_kepler_planets.ecc, 
+                            berger_kepler_planets.incl, 
+                            berger_kepler_planets.omega, berger_kepler_planets.iso_mass,
+                            berger_kepler_planets.rrmscdpp06p0, angle_flag=True) # was np.ones(len(berger_kepler_planets))*131.4
+
+    berger_kepler_planets['transit_status'] = transit_statuses[0]
+    berger_kepler_planets['prob_detections'] = prob_detections[0]
+    transit_multiplicities += [0.] * (len(k) - len(transit_multiplicities)) # pad with zeros to match length of k
+    berger_kepler_planets['transit_multiplicities'] = transit_multiplicities #[0]
+    berger_kepler_planets['sn'] = sn
+    """
+    
+    # AMDs
+    lambda_k_temps = G*solar_mass_to_cgs(berger_kepler_planets['iso_mass'])*au_to_cgs(p_to_a(berger_kepler_planets['P'], berger_kepler_planets.iso_mass)).astype(float)
+    berger_kepler_planets['lambda_ks'] = earth_mass_to_cgs(berger_kepler_planets['planet_mass']) * np.sqrt(lambda_k_temps)
+    second_term1 = 1 - (berger_kepler_planets['ecc'])**2
+    second_term1 = second_term1.apply(lambda x: np.sqrt(x))
+    second_term2 = berger_kepler_planets['mutual_incl'].apply(lambda x: np.cos(x))
+    berger_kepler_planets['second_terms'] = 1 - second_term1*second_term2
+
+    prob_detections, transit_statuses, sn = calculate_transit_vectorized(berger_kepler_planets.P, 
+                            berger_kepler_planets.iso_rad, berger_kepler_planets.planet_radius,
+                            berger_kepler_planets.ecc, 
+                            berger_kepler_planets.incl, 
+                            berger_kepler_planets.omega, berger_kepler_planets.iso_mass,
+                            berger_kepler_planets.rrmscdpp06p0, angle_flag=True) # was np.ones(len(berger_kepler_planets))*131.4
+    
+    berger_kepler_planets['transit_status'] = transit_statuses[0]
+    berger_kepler_planets['prob_detections'] = prob_detections[0]
+    #print(berger_kepler_planets['transit_status'])
+    #print(berger_kepler_planets.loc[berger_kepler_planets.transit_status > 0])
+    berger_kepler_planets['sn'] = sn
+    
+    """
+    # AMDs
     lambda_k_temps = G*solar_mass_to_cgs(df['iso_mass'].apply(pd.to_numeric))*au_to_cgs(p_to_a(df['P'].apply(pd.to_numeric), df.iso_mass.apply(pd.to_numeric)))
     df['lambda_ks'] = earth_mass_to_cgs(df['planet_mass']) * (lambda_k_temps)**0.5
     print(df['mutual_incl'])
@@ -454,13 +570,14 @@ def model_vectorized(df, model_flag, cube):
     df['prob_detections'] = prob_detections[0]
     df['transit_multiplicities'] = transit_multiplicities[0]
     df['sn'] = sn
+    """
+    return berger_kepler_planets
 
-    return df
-
-def model_van_eylen(k, star_age, df, model_flag, cube):
+def model_van_eylen(star_age, df, model_flag, cube):
     """
     Enrich berger_kepler DataFrame with planet parameters like ecc, incl, etc.
     Params: 
+    - k: ground truth data from Kepler-Gaia cross-match (six-tuple of ints)
     - star_age: berger_kepler.iso_age (Pandas Series of floats)
     - df: berger_kepler (DataFrame of star and planet params)
     - model_flag: what initial eccentricity distribution to use (string)
@@ -552,11 +669,11 @@ def model_van_eylen(k, star_age, df, model_flag, cube):
     df['intact_flag'] = intact_flags
     df['num_planets'] = num_planets_all
     berger_kepler_planets = df.explode('P')
-
+    #print(berger_kepler_planets)
     berger_kepler_planets = df.explode('P', '')
     #print(berger_kepler_planets)
     ###print("intacts: ", intacts)
-    
+
     # draw longitudes of periastron
     #omega = np.random.uniform(0,2*np.pi,len(berger_kepler_planets))
     #berger_kepler_planets['omega'] = omega
@@ -592,11 +709,9 @@ def model_van_eylen(k, star_age, df, model_flag, cube):
                             berger_kepler_planets.incl, 
                             berger_kepler_planets.omega, berger_kepler_planets.iso_mass,
                             berger_kepler_planets.rrmscdpp06p0, angle_flag=True) # was np.ones(len(berger_kepler_planets))*131.4
-    
+
     berger_kepler_planets['transit_status'] = transit_statuses[0]
     berger_kepler_planets['prob_detections'] = prob_detections[0]
-    transit_multiplicities += [0.] * (len(k) - len(transit_multiplicities)) # pad with zeros to match length of k
-    berger_kepler_planets['transit_multiplicities'] = transit_multiplicities #[0]
     berger_kepler_planets['sn'] = sn
 
     return berger_kepler_planets

@@ -269,6 +269,39 @@ def calculate_impact_parameter(star_radius, a, e, incl, omega, angle_flag): # fo
     
     return factor1 * factor2
 
+def calculate_impact_parameter_vectorized(star_radius, a, e, incl, omega, angle_flag): # following Winn 2010 Eqn 7
+    """
+    angle_flag: True means indexed at 0; False means indexed at pi/2
+    """
+    star_radius = solar_radius_to_au(star_radius)
+    if angle_flag==True:
+        factor1_temp = np.pi/2 - incl
+        factor1 = (a * factor1_temp.apply(lambda x: np.cos(x)))/star_radius  # again, we're indexed at 0 rather than pi/2
+    elif angle_flag==False: # if indexed at pi/2
+        factor1_temp = incl
+        factor1 = (a * factor1_temp.apply(lambda x: np.cos(x)))/star_radius 
+    factor2 = (1-e**2)/(1+e*omega.apply(lambda x: np.sin(x))) # leave this alone, right? Bc everyone always assumes omega=pi/2?
+    
+    return factor1 * factor2
+
+def calculate_transit_duration_vectorized(P, r_star, r_planet, b, a, inc, e, omega, angle_flag): # Winn 2011s Eqn 14 & 16
+    #print("take 1: ", r_planet/r_star)
+    #print("take 2: ", (1+(r_planet/r_star))**2 - b**2)
+    
+    arg1_temp = (1+(r_planet/r_star))**2 - b**2
+    arg1 = arg1_temp.apply(lambda x: np.sqrt(x))
+    if angle_flag==True:
+        arg2_temp = np.pi/2 - inc
+        arg2 = (r_star / a) * (arg1 / arg2_temp.apply(lambda x: np.sin(x))) # account for us being indexed at 0 rather than pi/2
+    elif angle_flag==False:
+        arg2_temp = inc
+        arg2 = (r_star / a) * (arg1 / arg2_temp.apply(lambda x: np.sin(x))) # assuming indexed at pi/2
+    arg3_temp = 1-e**2
+    arg3 = arg3_temp.apply(lambda x: np.sqrt(x))/(1+e*omega.apply(lambda x: np.sin(x))) # eccentricity factor from Eqn 16 of Winn 2011
+    #print("Winn args: ", arg1, arg2, arg3)
+    
+    return (P / np.pi) * arg2.apply(lambda x: np.arcsin(x)) * arg3
+
 def calculate_transit_duration(P, r_star, r_planet, b, a, inc, e, omega, angle_flag): # Winn 2011s Eqn 14 & 16
     #print("take 1: ", r_planet/r_star)
     #print("take 2: ", (1+(r_planet/r_star))**2 - b**2)
@@ -331,6 +364,42 @@ def calculate_sn(P, rp, rs, cdpp, tdur, unit_test_flag=False):
     factor2 = delta/cdpp_eff
     sn = factor1 * factor2
     
+    if unit_test_flag==True:
+        if np.isnan(sn)==True:
+            sn = 0
+        return sn
+    else:
+        sn = sn.fillna(0)
+        return sn
+
+def calculate_sn_vectorized(P, rp, rs, cdpp, tdur, unit_test_flag=False): 
+    """
+    Calculate S/N per planet using Eqn 4 in Christiansen et al 2012: https://arxiv.org/pdf/1208.0595.pdf
+    
+    Params: P (days); rp (Earth radii); rs (Solar radii); cdpp (ppm); tdur (days)
+    
+    Returns: S/N
+    """
+    tobs = 365*3.5 # days; time spanned observing the target; set to 3.5 years, or the length of Kepler mission
+    f0 = 0.92 # fraction of time spent actually observing and not doing spacecraft things
+    tcdpp = 0.25 # days; using CDPP for 6 hour transit durations; could change to be more like Earth transiting Sun?
+    rp = solar_radius_to_au(rp) # earth_radius_to_au when not using Matthias's test set
+    rs = solar_radius_to_au(rs)
+    #print(P, rp, rs, cdpp, tdur)
+    factor1 = tobs*f0/P.apply(lambda x: np.sqrt(x)) # this is the number of transits
+    delta = 1e6*(rp/rs)**2 # convert from parts per unit to ppm
+    cdpp_eff = cdpp * tcdpp/tdur.apply(lambda x: np.sqrt(x))
+    #print("CDPP ingredients: ", cdpp, tcdpp, tdur)
+    factor2 = delta/cdpp_eff
+    sn = factor1 * factor2
+    """
+    print("periods: ", P, P.apply(lambda x: np.sqrt(x)))
+    print("tdurs: ", tdur, tdur.apply(lambda x: np.sqrt(x)))
+    print("tcdpp: ", tcdpp)
+    print("cdpp_eff: ", cdpp, cdpp_eff)
+    print("sn")
+    quit()
+    """
     if unit_test_flag==True:
         if np.isnan(sn)==True:
             sn = 0

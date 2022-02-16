@@ -51,10 +51,11 @@ def prior(cube, ndim, nparams):
 
 def model(iso_age, berger_kepler, model_flag, cube):
 	# wrap model_van_eylen() for convenience within the pymultinest framework
-	berger_kepler_planets = model_van_eylen(k, iso_age, berger_kepler, model_flag, cube)
+	#berger_kepler_planets = model_van_eylen(iso_age, berger_kepler, model_flag, cube)
+	berger_kepler_planets = model_vectorized(berger_kepler, model_flag, cube)
 	transiters_berger_kepler = berger_kepler_planets.loc[berger_kepler_planets['transit_status']==1]
-	transit_multiplicity = transiters_berger_kepler.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid
-	transit_multiplicity = list(transit_multiplicity*cube[3])
+	transit_multiplicity = list(cube[3]*transiters_berger_kepler.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid)
+	transit_multiplicity += [0.] * (len(k) - len(transit_multiplicity)) # pad with zeros to match length of k
 
 	return transit_multiplicity
 
@@ -145,21 +146,21 @@ nparams = len(parameters)
 
 
 # run MultiNest
-pymultinest.run(loglike, prior, nparams, outputfiles_basename=path+'pymultinest_long_run/test' + '_1_', resume = False, verbose = True)
-json.dump(parameters, open(path+'pymultinest_long_run/test' + '_1_params.json', 'w')) # save parameter names
+pymultinest.run(loglike, prior, nparams, outputfiles_basename=path+'pymultinest_test/test' + '_1_', resume = False, verbose = True)
+json.dump(parameters, open(path+'pymultinest_test/test' + '_1_params.json', 'w')) # save parameter names
 
 
 # plot the distribution of a posteriori possible models
 plt.figure() 
 plt.scatter(np.arange(6), k, '+ ', color='red', label='data')
-a = pymultinest.Analyzer(outputfiles_basename=path+'pymultinest_long_run/test' + '_1_', n_params = nparams)
+a = pymultinest.Analyzer(outputfiles_basename=path+'pymultinest_test/test' + '_1_', n_params = nparams)
 for (m, b, c, f) in a.get_equal_weighted_posterior()[::100,:-1]:
 	try:
 		plt.plot(np.arange(6), model(berger_kepler.iso_age, berger_kepler, model_flag, [m,b,c,f]), '-', color='blue', alpha=0.3, label='model')
 	except:
 		plt.plot(np.arange(7), model(berger_kepler.iso_age, berger_kepler, model_flag, [m,b,c,f]), '-', color='blue', alpha=0.3, label='model')
 
-plt.savefig(path+ 'pymultinest_long_run/test' + '_1_posterior.pdf')
+plt.savefig(path+ 'pymultinest_test/test' + '_1_posterior.pdf')
 plt.close()
 
 

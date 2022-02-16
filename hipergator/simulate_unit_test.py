@@ -34,6 +34,7 @@ pnum = pnum.drop_duplicates(['kepid'])
 k = pnum.koi_count.value_counts() 
 #k = pd.Series([len(berger_kepler)-np.sum(k), 244, 51, 12, 8, 1]) 
 k = pd.Series([len(berger_kepler)-np.sum(k), 833, 134, 38, 15, 5])
+k = [833, 134, 38, 15, 5, 0]
 G = 6.6743e-8 # gravitational constant in cgs
 
 def prior_grid_logslope(cube, ndim, nparams, gi_m, gi_b, gi_c):
@@ -116,15 +117,17 @@ def unit_test(k, model_flag):
     print("cube: ", cube)
 
     berger_kepler_planets = model_van_eylen(berger_kepler.iso_age, berger_kepler, model_flag, cube)
+    #berger_kepler_planets = model_vectorized(berger_kepler, model_flag, cube)
     transiters_berger_kepler = berger_kepler_planets.loc[berger_kepler_planets['transit_status']==1]
-    transit_multiplicity = frac*transiters_berger_kepler.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid
+    transit_multiplicity = list(frac*transiters_berger_kepler.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid)
+    print([0.] * (len(k) - len(transit_multiplicity)))
+    transit_multiplicity += [0.] * (len(k) - len(transit_multiplicity)) # pad with zeros to match length of k
     #berger_kepler_planets.to_csv('transits02_04_04_25.csv')
     
     # make sure the 6-multiplicity bin is filled in with zero and ignore zero-bin
-    k[6] = 0
-    k = k[1:].reset_index()[0]
-    print("transit multiplicity: ", list(transit_multiplicity))
-    quit()
+    #k[6] = 0
+    #k = k[1:].reset_index()[0]
+    print("transit multiplicity: ", transit_multiplicity)
     print("k: ", list(k))
 
     # calculate log likelihood
@@ -152,11 +155,14 @@ def unit_test(k, model_flag):
     return berger_kepler_planets.ecc, np.abs(berger_kepler_planets.mutual_incl)*180/np.pi, berger_kepler_planets
 
 
-#### Compare CDPP sampling methods
+#### Test vectorized approach
+start = datetime.now()
 unit_test(k, 'limbach-hybrid')
+end = datetime.now()
+print("ELAPSED: ", end-start)
 quit()
 
-
+#### Compare CDPP sampling methods
 
 #### Run unit test to plot and compare different eccentricity distribution assumptions
 """
