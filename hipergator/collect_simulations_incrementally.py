@@ -59,9 +59,7 @@ def better_loglike(lam, k):
 	"""
 
 	logL = []
-	lam = lam.tolist()
 	#print("old lam: ", lam)
-	lam += [0.] * (len(k) - len(lam)) # pad with zeros to match length of k
 	#print("new lam: ", lam)
 	for i in range(len(lam)):
 		if lam[i]==0:
@@ -85,7 +83,8 @@ def main(filename, f): # one read and write per sim[i] filename
 		transiters_berger_kepler = df.loc[df['transit_status']==1]
 
 		# compute transit multiplicity and save off the original transit multiplicity (pre-frac)
-		transit_multiplicity = f * transiters_berger_kepler.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid
+		transit_multiplicity = list(f * transiters_berger_kepler.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid)
+		transit_multiplicity += [0.] * (len(k) - len(transit_multiplicity)) # pad with zeros to match length of k
 
 		# calculate logLs for different fracs and keep the best one
 		logL = better_loglike(transit_multiplicity, k)
@@ -207,7 +206,7 @@ fs = []
 
 #done = glob(path+'simulations2/limbach-hybrid/transits*')
 if sys.argv[1] == 'new':
-	file1 = open(path+"logLs_incremental_corrected.txt", "w") # "a" if appending, but then comment out the header and add a newline
+	file1 = open(path+"logLs_incremental_corrected2.txt", "w") # "a" if appending, but then comment out the header and add a newline
 	file1.write("filename,m,b,c,f,logL,transit_multiplicity,intact_frac,disrupted_frac,intact_logL,intact_transit_multiplicity,disrupted_logL,disrupted_transit_multiplicity,young10_logL,young10_transit_multiplicity,old10_logL,old10_transit_multiplicity,young15_logL,young15_transit_multiplicity,old15_logL,old15_transit_multiplicity,young20_logL,young20_transit_multiplicity,old20_logL,old20_transit_multiplicity,young25_logL,young25_transit_multiplicity,old25_logL,old25_transit_multiplicity,young30_logL,young30_transit_multiplicity,old30_logL,old30_transit_multiplicity,young35_logL,young35_transit_multiplicity,old35_logL,old35_transit_multiplicity,young40_logL,young40_transit_multiplicity,old40_logL,old40_transit_multiplicity,young45_logL,young45_transit_multiplicity,old45_logL,old45_transit_multiplicity,young50_logL,young50_transit_multiplicity,old50_logL,old50_transit_multiplicity\n") # header
 
 elif sys.argv[1] == 'not-new':

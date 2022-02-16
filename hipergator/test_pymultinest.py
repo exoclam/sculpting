@@ -152,13 +152,11 @@ json.dump(parameters, open(path+'pymultinest_test/test' + '_1_params.json', 'w')
 
 # plot the distribution of a posteriori possible models
 plt.figure() 
-plt.scatter(np.arange(6), k, '+ ', color='red', label='data')
+plt.scatter(np.arange(len(k))+1, k, '+ ', color='red', label='data')
 a = pymultinest.Analyzer(outputfiles_basename=path+'pymultinest_test/test' + '_1_', n_params = nparams)
 for (m, b, c, f) in a.get_equal_weighted_posterior()[::100,:-1]:
-	try:
-		plt.plot(np.arange(6), model(berger_kepler.iso_age, berger_kepler, model_flag, [m,b,c,f]), '-', color='blue', alpha=0.3, label='model')
-	except:
-		plt.plot(np.arange(7), model(berger_kepler.iso_age, berger_kepler, model_flag, [m,b,c,f]), '-', color='blue', alpha=0.3, label='model')
+	mod = model(berger_kepler.iso_age, berger_kepler, model_flag, [m,b,c,f])
+	plt.plot(np.arange(len(mod))+1, mod, '-', color='blue', alpha=0.3, label='model')
 
 plt.savefig(path+ 'pymultinest_test/test' + '_1_posterior.pdf')
 plt.close()
