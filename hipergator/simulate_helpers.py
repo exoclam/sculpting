@@ -11,8 +11,19 @@ import random
 from scipy.stats import gaussian_kde, loguniform
 from math import lgamma
 
-path = '/blue/sarahballard/c.lam/sculpting2/'
-#path = '/Users/chrislam/Desktop/sculpting/' # new computer has different username
+#path = '/blue/sarahballard/c.lam/sculpting2/'
+path = '/Users/chrislam/Desktop/sculpting/' # new computer has different username
+
+"""
+# Create sample bank of eccentricities to draw from so that you don't call np.searchsorted a bajillion times
+# For drawing eccentricities using Limbach & Turner 2014 CDFs relating e to multiplicity
+limbach = pd.read_csv(path+'limbach_cdfs.txt', engine='python', header=0, sep='\s{2,20}') # space-agnostic separator
+values = np.random.rand(10000)
+value_bins1 = np.searchsorted(limbach['1'], values)
+value_bins2 = np.searchsorted(limbach['2'], values)
+value_bins5 = np.searchsorted(limbach['5'], values)
+value_bins6 = np.searchsorted(limbach['6'], values)
+"""
 
 ### helper conversion functions
 def p_to_a(P, star_mass):
@@ -157,6 +168,27 @@ def calculate_eccentricity_limbach_vectorized(multiplicity, limbach):
     
     return random_from_cdf
 
+def calculate_eccentricity_limbach_vectorized_bank(multiplicity):
+    """
+    Draw eccentricities using test bank of Limbach & Turner 2014 CDFs
+    Params: multiplicity of system (array of ints)
+    Returns: np.array of eccentricity values with length==multiplicity
+    """
+
+    if multiplicity==1:
+        ecc_indices = np.random.choice(value_bins1, 1)
+    elif multiplicity==2:
+        ecc_indices = np.random.choice(value_bins2, 2)
+    elif multiplicity==5:
+        ecc_indices = np.random.choice(value_bins5, 5)
+    elif multiplicity==6:
+        ecc_indices = np.random.choice(value_bins6, 6)
+    
+    random_from_cdf = np.logspace(-2,0,101)[ecc_indices] # select x_d positions based on these random positions
+    #df['ecc'] = df.apply(lambda x: np.logspace(-2,0,101)[value_bins]) # select x_d positions based on these random positions
+    
+    return random_from_cdf
+
 def draw_eccentricity_van_eylen_vectorized(model_flag, num_planets, *args):
     # *args is optional parameter of the limbach DataFrame for certain model_flags
 
@@ -165,6 +197,18 @@ def draw_eccentricity_van_eylen_vectorized(model_flag, num_planets, *args):
         sigma_rayleigh = 0.26
         #draws = np.where(num_planets > 1, calculate_eccentricity_limbach(num_planets), np.random.rayleigh(sigma_rayleigh, num_planets))
         draws = np.where(num_planets > 1, calculate_eccentricity_limbach_vectorized(num_planets, limbach), np.random.rayleigh(sigma_rayleigh, num_planets))
+        #draws = np.where(num_planets > 1, calculate_eccentricity_limbach_vectorized_bank(num_planets), np.random.rayleigh(sigma_rayleigh, num_planets))
+
+    elif model_flag=='rayleigh':
+        sigma_single = 0.24
+        sigma_multi = 0.061
+        if num_planets==1:
+            sigma = sigma_single
+        elif num_planets>1:
+            sigma = sigma_multi
+
+        draws= np.random.rayleigh(sigma, num_planets)
+
     return draws
 
 def draw_eccentricity_van_eylen(model_flag, num_planets):

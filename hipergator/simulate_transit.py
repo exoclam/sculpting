@@ -508,7 +508,7 @@ def model_vectorized(df, model_flag, cube):
     #berger_kepler_planets = df.explode('P', '')
     #print(berger_kepler_planets)
     berger_kepler_planets = df.apply(pd.Series.explode)
-    print(berger_kepler_planets)
+    #print(berger_kepler_planets)
 
     """
     # AMDs

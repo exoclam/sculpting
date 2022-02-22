@@ -116,8 +116,8 @@ def unit_test(k, model_flag):
     cube = [m, b, cutoff, frac]
     print("cube: ", cube)
 
-    berger_kepler_planets = model_van_eylen(berger_kepler.iso_age, berger_kepler, model_flag, cube)
-    #berger_kepler_planets = model_vectorized(berger_kepler, model_flag, cube)
+    #berger_kepler_planets = model_van_eylen(berger_kepler.iso_age, berger_kepler, model_flag, cube)
+    berger_kepler_planets = model_vectorized(berger_kepler, model_flag, cube)
     transiters_berger_kepler = berger_kepler_planets.loc[berger_kepler_planets['transit_status']==1]
     transit_multiplicity = list(frac*transiters_berger_kepler.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid)
     print([0.] * (len(k) - len(transit_multiplicity)))
@@ -157,7 +157,7 @@ def unit_test(k, model_flag):
 
 #### Test vectorized approach
 start = datetime.now()
-unit_test(k, 'limbach-hybrid')
+unit_test(k, 'rayleigh')
 end = datetime.now()
 print("ELAPSED: ", end-start)
 quit()
