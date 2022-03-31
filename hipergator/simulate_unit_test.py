@@ -20,6 +20,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from simulate_transit import * 
 from simulate_helpers import *
+import matplotlib.pyplot as plt
 #from simulate_transit import model_van_eylen
 
 ### variables for HPG
@@ -106,13 +107,66 @@ def loglike_direct_draw_better(cube, ndim, nparams, k):
     
     return logL, lam, geom_lam, geom_logL, transits, intact_fractions, amds, eccentricities, inclinations_degrees
 
+def sanity_check(model_flag):
+    """
+    The most important unit test so far...making sure that model_van_eylen and model_vectorized are producing the same transit multiplicities. 
+    For some reason, model_van_eylen is consistent, while model_vectorized keeps trading off its 6-bin into the 3- and 4-bins.
+
+    """
+
+    ### use fiducial values of m, b, cutoff, and frac for now to test eccentricity models
+    m = -1.2
+    b = 0.4
+    cutoff = 0.4e10 # yrs
+    frac = 0.2 # fraction of FGK dwarfs with planets
+    cube = [m, b, cutoff, frac]
+    print("cube: ", cube)
+
+    ### VECTORIZED
+    berger_kepler_planets = model_vectorized(berger_kepler, model_flag, cube)
+    """
+    THIS IS WHERE I FIGURED OUT THAT RANDOM.CHOICE WAS TOTALLY ASSIGNING 5 OR 6 FOR ALL INTACT SYSTEMS, AND 1 OR 2 FOR DISRUPTED
+    print("1s: ", len(berger_kepler_planets.loc[berger_kepler_planets.num_planets==1]))
+    print("2s: ", len(berger_kepler_planets.loc[berger_kepler_planets.num_planets==2]))
+    print("5s: ", len(berger_kepler_planets.loc[berger_kepler_planets.num_planets==5]))
+    print("6s: ", len(berger_kepler_planets.loc[berger_kepler_planets.num_planets==6]))
+    print("intact: ", len(berger_kepler_planets.loc[berger_kepler_planets.intact_flag=='intact']))
+    print("disrupted: ", len(berger_kepler_planets.loc[berger_kepler_planets.intact_flag=='disrupted']))
+    #plt.hist(berger_kepler_planets.num_planets)
+    #plt.show()
+    quit()
+    """
+    transiters_berger_kepler = berger_kepler_planets.loc[berger_kepler_planets['transit_status']==1]
+    transit_multiplicity = list(frac*transiters_berger_kepler.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid)
+    transit_multiplicity += [0.] * (6 - len(transit_multiplicity)) # pad with zeros to match length of k
+    #berger_kepler_planets.to_csv('transits02_04_04_25.csv')
+    
+    # make sure the 6-multiplicity bin is filled in with zero and ignore zero-bin
+    #k[6] = 0
+    #k = k[1:].reset_index()[0]
+    print("transit multiplicity vectorized: ", transit_multiplicity)
+
+    ### VAN EYLEN
+    berger_kepler_planets = model_van_eylen(berger_kepler.iso_age, berger_kepler, model_flag, cube)
+    transiters_berger_kepler = berger_kepler_planets.loc[berger_kepler_planets['transit_status']==1]
+    transit_multiplicity = list(frac*transiters_berger_kepler.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid)
+    transit_multiplicity += [0.] * (6 - len(transit_multiplicity)) # pad with zeros to match length of k
+    #berger_kepler_planets.to_csv('transits02_04_04_25.csv')
+    
+    # make sure the 6-multiplicity bin is filled in with zero and ignore zero-bin
+    #k[6] = 0
+    #k = k[1:].reset_index()[0]
+    print("transit multiplicity van eylen: ", transit_multiplicity)
+
+    return
+
 def unit_test(k, model_flag):
 
     ### use fiducial values of m, b, cutoff, and frac for now to test eccentricity models
     m = -0.2
     b = 0.4
     cutoff = 0.4e10 # yrs
-    frac = 0.25 # fraction of FGK dwarfs with planets
+    frac = 0.2 # fraction of FGK dwarfs with planets
     cube = [m, b, cutoff, frac]
     print("cube: ", cube)
 
@@ -154,10 +208,13 @@ def unit_test(k, model_flag):
     """
     return berger_kepler_planets.ecc, np.abs(berger_kepler_planets.mutual_incl)*180/np.pi, berger_kepler_planets
 
+#### Compare transit multiplicity outputs of model_van_eylen vs model_vectorized
+sanity_check('limbach-hybrid')
+quit()
 
-#### Test vectorized approach
+#### Test vectorized approach for time
 start = datetime.now()
-unit_test(k, 'rayleigh')
+unit_test(k, 'limbach-hybrid')
 end = datetime.now()
 print("ELAPSED: ", end-start)
 quit()

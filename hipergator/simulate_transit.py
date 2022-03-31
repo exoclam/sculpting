@@ -475,7 +475,8 @@ def model_vectorized(df, model_flag, cube):
     df['sigma'] = np.where(df.intact_flag=='intact', np.pi/90, np.pi/22.5)
 
     # assign number of planets per system based on intact flag
-    df['num_planets'] = np.where(df.intact_flag=='intact', random.choice([5, 6]), random.choice([1, 2]))
+    #df['num_planets'] = np.where(df.intact_flag=='intact', random.choice([5, 6]), random.choice([1, 2]))
+    df['num_planets'] = df.intact_flag.apply(lambda x: assign_num_planets(x))
 
     # draw period from loguniform distribution from 2 to 300 days
     df['P'] = df.num_planets.apply(lambda x: np.array(loguniform.rvs(2, 300, size=x)))

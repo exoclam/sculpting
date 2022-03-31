@@ -106,6 +106,14 @@ def assign_intact_flag(x):
 
     return np.random.choice(['intact', 'disrupted'], p=[x, 1-x])
 
+def assign_num_planets(x):
+    # # call np.random.choice() for df.apply for model_vectorized()
+    # x: df.intact_flag
+    if x=='intact':
+        return np.random.choice([5, 6])
+    elif x=='disrupted':
+        return np.random.choice([1, 2])
+
 def draw_inclinations_vectorized(midplane, sigma, num_planets):
     # call np.random.normal() for df.apply for model_vectorized()
     # x: 
