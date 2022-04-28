@@ -115,9 +115,9 @@ def sanity_check(model_flag):
     """
 
     ### use fiducial values of m, b, cutoff, and frac for now to test eccentricity models
-    m = -1.2
-    b = 0.4
-    cutoff = 0.4e10 # yrs
+    m = -0.2 #-1.2
+    b = 0.9
+    cutoff = 1e9 # yrs
     frac = 0.2 # fraction of FGK dwarfs with planets
     cube = [m, b, cutoff, frac]
     print("cube: ", cube)
@@ -163,9 +163,9 @@ def sanity_check(model_flag):
 def unit_test(k, model_flag):
 
     ### use fiducial values of m, b, cutoff, and frac for now to test eccentricity models
-    m = -0.2
-    b = 0.4
-    cutoff = 0.4e10 # yrs
+    m = -0.4
+    b = 0.6
+    cutoff = 1e9 # yrs
     frac = 0.2 # fraction of FGK dwarfs with planets
     cube = [m, b, cutoff, frac]
     print("cube: ", cube)
@@ -208,6 +208,7 @@ def unit_test(k, model_flag):
     """
     return berger_kepler_planets.ecc, np.abs(berger_kepler_planets.mutual_incl)*180/np.pi, berger_kepler_planets
 
+"""
 #### Compare transit multiplicity outputs of model_van_eylen vs model_vectorized
 sanity_check('limbach-hybrid')
 quit()
@@ -218,6 +219,7 @@ unit_test(k, 'limbach-hybrid')
 end = datetime.now()
 print("ELAPSED: ", end-start)
 quit()
+"""
 
 #### Compare CDPP sampling methods
 
@@ -259,38 +261,49 @@ df['amd_products'] = df.lambda_ks*df.second_terms
 #print(df.amd_products)
 #df = df.loc[df.mutual_incl*180/np.pi >= 1] # TEMPORARY FOR TESTING
 
+# needed for the groupby.mean() to work
+df.ecc = df.ecc.astype(float) 
+df.mutual_incl = df.mutual_incl.astype(float)
+
 df_amd = df.groupby('kepid').sum('amd_products')
-df_ecc = df.groupby('kepid').mean('ecc')
-df_incl = df.groupby('kepid').mean('mutual_incl')
-df_amd['ecc'] = df_ecc['ecc']
-df_amd['mutual_incl'] = df_incl['mutual_incl']
+
+#df_ecc = df.groupby('kepid').mean('ecc')
+df_amd['mutual_incl'] = df.groupby(['kepid'])['mutual_incl'].mean()
+
+#df_incl = df.groupby('kepid').mean('mutual_incl')
+df_amd['ecc'] = df.groupby(['kepid'])['ecc'].mean()
+
+#df_amd['ecc'] = df_ecc['ecc']
+#df_amd['mutual_incl'] = df_incl['mutual_incl']
 #df_amd = df_amd.loc[df_amd.amd_products > 2e48] # TEMPORARY FOR TESTING
 #df_ecc = df_ecc.loc[df_ecc.amd_products > 1e48] # TEMPORARY FOR TESTING
 #df_incl = df_incl.loc[df_incl.amd_products > 1e48] # TEMPORARY FOR TESTING
 
+"""
 print(len(df_amd), len(df_ecc), len(df_incl))
 print(df_amd)
 print(df_ecc)
 #print(len(df_amd))
 #print(min(df_amd.amd_products), max(df_amd.amd_products))
 print(df_amd.ecc, df_ecc.ecc, df_incl.ecc)
+"""
 
 #plt.hist(df_amd.amd_products)
 #plt.show()
 
-fig = plt.figure(figsize=(6, 6))
+fig = plt.figure(figsize=(10, 6))
 #plt.set_cmap("Blues_r")
 plt.scatter(df_amd.ecc, df_amd.mutual_incl*180/np.pi, s=2, c=np.log10(df_amd.amd_products))
 plt.yscale('log')
 plt.xscale('log')
 plt.xlim(1e-3,1e0)
 plt.ylim(1e-2,2e2)
-plt.xlabel('eccentricity', fontsize=16)
-plt.ylabel('mutual inclination [deg]', fontsize=16)
-plt.tick_params(axis='both', labelsize=14)
+plt.xlabel('eccentricity', fontsize=28)
+plt.ylabel('mutual inclination [deg]', fontsize=28)
+plt.tick_params(axis='both', labelsize=26)
 cbar = plt.colorbar()
-cbar.ax.tick_params(labelsize=14)
-cbar.set_label(label='log AMD', size=14, labelpad=20)
+cbar.ax.tick_params(labelsize=22)
+cbar.set_label(label='log AMD', size=24, labelpad=20)
 fig.tight_layout()
 #plt.show()
-plt.savefig('amd_plot.png', bbox_inches='tight')
+plt.savefig('/Users/chrislam/Desktop/sculpting/poster_plots/amd_plot2.png', bbox_inches='tight')
