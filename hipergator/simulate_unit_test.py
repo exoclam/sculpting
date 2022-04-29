@@ -163,8 +163,8 @@ def sanity_check(model_flag):
 def unit_test(k, model_flag):
 
     ### use fiducial values of m, b, cutoff, and frac for now to test eccentricity models
-    m = -0.4
-    b = 0.6
+    m = -0.2
+    b = 0.9
     cutoff = 1e9 # yrs
     frac = 0.2 # fraction of FGK dwarfs with planets
     cube = [m, b, cutoff, frac]
@@ -298,7 +298,7 @@ plt.yscale('log')
 plt.xscale('log')
 plt.xlim(1e-3,1e0)
 plt.ylim(1e-2,2e2)
-plt.xlabel('eccentricity', fontsize=28)
+#plt.xlabel('eccentricity', fontsize=28)
 plt.ylabel('mutual inclination [deg]', fontsize=28)
 plt.tick_params(axis='both', labelsize=26)
 cbar = plt.colorbar()
@@ -306,4 +306,4 @@ cbar.ax.tick_params(labelsize=22)
 cbar.set_label(label='log AMD', size=24, labelpad=20)
 fig.tight_layout()
 #plt.show()
-plt.savefig('/Users/chrislam/Desktop/sculpting/poster_plots/amd_plot2.png', bbox_inches='tight')
+plt.savefig('/Users/chrislam/Desktop/sculpting/poster_plots/amd_plot1.pdf', bbox_inches='tight', format='pdf')
