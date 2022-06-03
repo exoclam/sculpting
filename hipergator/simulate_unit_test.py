@@ -164,8 +164,8 @@ def unit_test(k, model_flag):
 
     ### use fiducial values of m, b, cutoff, and frac for now to test eccentricity models
     m = -0.2
-    b = 0.9
-    cutoff = 1e9 # yrs
+    b = 0.3 # 0.9
+    cutoff = 6.309573e+08 # 1e9 # yrs
     frac = 0.2 # fraction of FGK dwarfs with planets
     cube = [m, b, cutoff, frac]
     print("cube: ", cube)
@@ -173,6 +173,9 @@ def unit_test(k, model_flag):
     #berger_kepler_planets = model_van_eylen(berger_kepler.iso_age, berger_kepler, model_flag, cube)
     berger_kepler_planets = model_vectorized(berger_kepler, model_flag, cube)
     transiters_berger_kepler = berger_kepler_planets.loc[berger_kepler_planets['transit_status']==1]
+    print("intact fraction: ", transiters_berger_kepler.groupby('kepid').loc[transiters_berger_kepler.intact_flag=='intact'])
+    quit()
+
     transit_multiplicity = list(frac*transiters_berger_kepler.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid)
     print([0.] * (len(k) - len(transit_multiplicity)))
     transit_multiplicity += [0.] * (len(k) - len(transit_multiplicity)) # pad with zeros to match length of k

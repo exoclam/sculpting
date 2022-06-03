@@ -79,6 +79,7 @@ def better_loglike(lam, k):
 def main(filename, f): # one read and write per sim[i] filename
 	try:
 		df = pd.read_csv(filename, delimiter=',')
+
 		# isolate transiting planets
 		transiters_berger_kepler = df.loc[df['transit_status']==1]
 
@@ -92,8 +93,15 @@ def main(filename, f): # one read and write per sim[i] filename
 		# get intact and disrupted fractions (combine them later to get fraction of systems w/o planets)
 		intact = df.loc[df.intact_flag=='intact']
 		disrupted = df.loc[df.intact_flag=='disrupted']
+		#print(df.loc[(df.intact_flag != 'intact') & (df.intact_flag != 'disrupted')].intact_flag)
+		#print("intact: ", len(intact.kepid.unique()))
+		#print("disrupted: ", len(disrupted.kepid.unique()))
+		#print("total: " , len(df.kepid.unique()))
+
 		intact_frac = f*len(intact)/len(df)
 		disrupted_frac = f*len(disrupted)/len(df)
+		intact_frac2 = len(intact.kepid.unique())/len(df.kepid.unique())
+		disrupted_frac2 = len(disrupted.kepid.unique())/len(df.kepid.unique())
 
 		# sneak out transit_multiplicity and associated logLs for intact vs disrupted
 		intact_transiting = intact.loc[intact['transit_status']==1]
@@ -177,7 +185,7 @@ def main(filename, f): # one read and write per sim[i] filename
 
 		# output
 		#out = np.array((str(m), str(b), str(c), str(f), str(logL), str(list(transit_multiplicity)), str(intact_frac), str(disrupted_frac)))
-		out = np.array((filename, m, b, c, f, logL, list(transit_multiplicity), intact_frac, disrupted_frac, intact_logL, list(intact_transit_multiplicity), disrupted_logL, list(disrupted_transit_multiplicity), young1_logL, list(young1_transit_multiplicity), old1_logL, list(old1_transit_multiplicity), young2_logL, list(young2_transit_multiplicity), old2_logL, list(old2_transit_multiplicity), young3_logL, list(young3_transit_multiplicity), old3_logL, list(old3_transit_multiplicity), young4_logL, list(young4_transit_multiplicity), old4_logL, list(old4_transit_multiplicity), young5_logL, list(young5_transit_multiplicity), old5_logL, list(old5_transit_multiplicity), young6_logL, list(young6_transit_multiplicity), old6_logL, list(old6_transit_multiplicity), young7_logL, list(young7_transit_multiplicity), old7_logL, list(old7_transit_multiplicity), young8_logL, list(young8_transit_multiplicity), old8_logL, list(old8_transit_multiplicity), young9_logL, list(young9_transit_multiplicity), old9_logL, list(old9_transit_multiplicity)))
+		out = np.array((filename, m, b, c, f, logL, list(transit_multiplicity), intact_frac, disrupted_frac, intact_frac2, disrupted_frac2, intact_logL, list(intact_transit_multiplicity), disrupted_logL, list(disrupted_transit_multiplicity), young1_logL, list(young1_transit_multiplicity), old1_logL, list(old1_transit_multiplicity), young2_logL, list(young2_transit_multiplicity), old2_logL, list(old2_transit_multiplicity), young3_logL, list(young3_transit_multiplicity), old3_logL, list(old3_transit_multiplicity), young4_logL, list(young4_transit_multiplicity), old4_logL, list(old4_transit_multiplicity), young5_logL, list(young5_transit_multiplicity), old5_logL, list(old5_transit_multiplicity), young6_logL, list(young6_transit_multiplicity), old6_logL, list(old6_transit_multiplicity), young7_logL, list(young7_transit_multiplicity), old7_logL, list(old7_transit_multiplicity), young8_logL, list(young8_transit_multiplicity), old8_logL, list(old8_transit_multiplicity), young9_logL, list(young9_transit_multiplicity), old9_logL, list(old9_transit_multiplicity)))
 		out = out.reshape(1, len(out))
 		np.savetxt(file1, out, fmt='%s', delimiter='\t', newline='\n')
 		#file1.write("\n")
@@ -191,6 +199,7 @@ def main(filename, f): # one read and write per sim[i] filename
 
 #data_path = 'home/c.lam/blue/sculpting2/simulations2/limbach-hybrid/'
 data_path = '/blue/sarahballard/c.lam/sculpting2/simulations2/limbach-hybrid/'
+#data_path = path+'hipergator/'
 #print("path: ", path)
 
 # group file names by {m, b, cutoff} simulation
@@ -207,7 +216,7 @@ fs = []
 #done = glob(path+'simulations2/limbach-hybrid/transits*')
 if sys.argv[1] == 'new':
 	file1 = open(path+"logLs_incremental_corrected2.txt", "w") # "a" if appending, but then comment out the header and add a newline
-	file1.write("filename,m,b,c,f,logL,transit_multiplicity,intact_frac,disrupted_frac,intact_logL,intact_transit_multiplicity,disrupted_logL,disrupted_transit_multiplicity,young10_logL,young10_transit_multiplicity,old10_logL,old10_transit_multiplicity,young15_logL,young15_transit_multiplicity,old15_logL,old15_transit_multiplicity,young20_logL,young20_transit_multiplicity,old20_logL,old20_transit_multiplicity,young25_logL,young25_transit_multiplicity,old25_logL,old25_transit_multiplicity,young30_logL,young30_transit_multiplicity,old30_logL,old30_transit_multiplicity,young35_logL,young35_transit_multiplicity,old35_logL,old35_transit_multiplicity,young40_logL,young40_transit_multiplicity,old40_logL,old40_transit_multiplicity,young45_logL,young45_transit_multiplicity,old45_logL,old45_transit_multiplicity,young50_logL,young50_transit_multiplicity,old50_logL,old50_transit_multiplicity\n") # header
+	file1.write("filename,m,b,c,f,logL,transit_multiplicity,intact_frac,disrupted_frac,intact_frac2,disrupted_frac2,intact_logL,intact_transit_multiplicity,disrupted_logL,disrupted_transit_multiplicity,young10_logL,young10_transit_multiplicity,old10_logL,old10_transit_multiplicity,young15_logL,young15_transit_multiplicity,old15_logL,old15_transit_multiplicity,young20_logL,young20_transit_multiplicity,old20_logL,old20_transit_multiplicity,young25_logL,young25_transit_multiplicity,old25_logL,old25_transit_multiplicity,young30_logL,young30_transit_multiplicity,old30_logL,old30_transit_multiplicity,young35_logL,young35_transit_multiplicity,old35_logL,old35_transit_multiplicity,young40_logL,young40_transit_multiplicity,old40_logL,old40_transit_multiplicity,young45_logL,young45_transit_multiplicity,old45_logL,old45_transit_multiplicity,young50_logL,young50_transit_multiplicity,old50_logL,old50_transit_multiplicity\n") # header
 
 elif sys.argv[1] == 'not-new':
 	# open existing file to resume collecting

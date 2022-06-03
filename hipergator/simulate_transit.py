@@ -467,6 +467,12 @@ def model_vectorized(df, model_flag, cube):
     df['midplanes'] = np.random.uniform(-np.pi/2, np.pi/2, len(df))
 
     # assign intact flag
+    """
+    print(len(df.prob_intact), len(df.loc[df.prob_intact.isna()]))
+    plt.hist(df.prob_intact)
+    plt.show()
+    quit()
+    """
     df['intact_flag'] = df.prob_intact.apply(lambda x: assign_intact_flag(x))
     #df['intact_flag'] = assign_intact_flag(df.prob_intact)
     #np.random.choice(['intact', 'disrupted'], p=[np.array(df.prob_intact), 1-np.array(df.prob_intact)])
@@ -475,7 +481,7 @@ def model_vectorized(df, model_flag, cube):
     df['sigma'] = np.where(df.intact_flag=='intact', np.pi/90, np.pi/22.5)
 
     # assign number of planets per system based on intact flag
-    #df['num_planets'] = np.where(df.intact_flag=='intact', random.choice([5, 6]), random.choice([1, 2]))
+    #df['num_planets'] = np.where(df.intact_flag=='intact', random.choice([5, 6]), random.choice([1, 2])) # WRONG. This assigns ALL to 5 or 6 and 1 or 2
     df['num_planets'] = df.intact_flag.apply(lambda x: assign_num_planets(x))
 
     # draw period from loguniform distribution from 2 to 300 days
