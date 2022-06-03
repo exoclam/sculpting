@@ -193,7 +193,7 @@ First go-around
 
 pos = ivar + 1e-2 * np.random.randn(nwalkers, ndim)
 
-sampler = emcee.EnsembleSampler(nwalkers, ndim, log_probability, args=[k])
+sampler = emcee.EnsembleSampler(nwalkers, ndim, log_probability)
 state = sampler.run_mcmc(pos, 1000, progress=True) # 100 steps for burn-in
 
 fig, axes = plt.subplots(3, figsize=(10, 7), sharex=True)
