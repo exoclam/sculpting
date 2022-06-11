@@ -108,7 +108,7 @@ with Pool() as pool:
 	pos = ivar + 1e-2 * np.random.randn(nwalkers, ndim)
 
 	sampler = emcee.EnsembleSampler(nwalkers, ndim, log_probability, pool=pool)
-	state = sampler.run_mcmc(pos, 2000, progress=True) # 100 steps for burn-in
+	state = sampler.run_mcmc(pos, 5000, progress=True) # 100 steps for burn-in
 
 	fig, axes = plt.subplots(3, figsize=(10, 7), sharex=True)
 	samples = sampler.get_chain()

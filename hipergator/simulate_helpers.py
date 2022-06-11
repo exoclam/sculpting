@@ -106,6 +106,11 @@ def assign_intact_flag(x):
 
     return np.random.choice(['intact', 'disrupted'], p=[x, 1-x])
 
+def assign_flag(x, f):
+    # assign intact vs disrupted vs no planets
+
+    return np.random.choice(['intact', 'disrupted', 'no-planets'], p=[x*f, (1-x)*f, 1-f])
+
 def assign_num_planets(x):
     # # call np.random.choice() for df.apply for model_vectorized()
     # x: df.intact_flag
@@ -113,6 +118,8 @@ def assign_num_planets(x):
         return np.random.choice([5, 6])
     elif x=='disrupted':
         return np.random.choice([1, 2])
+    elif x=='no-planets':
+        return 0
 
 def draw_inclinations_vectorized(midplane, sigma, num_planets):
     # call np.random.normal() for df.apply for model_vectorized()
@@ -160,27 +167,32 @@ def calculate_eccentricity_limbach_vectorized(multiplicity, limbach):
     Params: multiplicity of system (array of ints); limbach (DataFrame of Limbach & Turner 2014 CDFs)
     Returns: np.array of eccentricity values with length==multiplicity
     """
+    if multiplicity > 0:
+        values = np.random.rand(multiplicity) # draw an eccentricity per planet
 
-    values = np.random.rand(multiplicity) # draw an eccentricity per planet
+        if multiplicity==1:
+            value_bins = np.searchsorted(limbach['1'], values) # return positions in cdf vector where random values should go
+        elif multiplicity==2:
+            value_bins = np.searchsorted(limbach['2'], values) # return positions in cdf vector where random values should go
+        elif multiplicity==5:
+            value_bins = np.searchsorted(limbach['5'], values) # return positions in cdf vector where random values should go
+        elif multiplicity==6:
+            value_bins = np.searchsorted(limbach['6'], values) # return positions in cdf vector where random values should go
 
-    if multiplicity==1:
-        value_bins = np.searchsorted(limbach['1'], values) # return positions in cdf vector where random values should go
-    elif multiplicity==2:
-        value_bins = np.searchsorted(limbach['2'], values) # return positions in cdf vector where random values should go
-    elif multiplicity==5:
-        value_bins = np.searchsorted(limbach['5'], values) # return positions in cdf vector where random values should go
-    elif multiplicity==6:
-        value_bins = np.searchsorted(limbach['6'], values) # return positions in cdf vector where random values should go
-    random_from_cdf = np.logspace(-2,0,101)[value_bins] # select x_d positions based on these random positions
-    #df['ecc'] = df.apply(lambda x: np.logspace(-2,0,101)[value_bins]) # select x_d positions based on these random positions
-    
-    return random_from_cdf
+        random_from_cdf = np.logspace(-2,0,101)[value_bins] # select x_d positions based on these random positions
+        #df['ecc'] = df.apply(lambda x: np.logspace(-2,0,101)[value_bins]) # select x_d positions based on these random positions
+
+        return random_from_cdf
+        
+    elif multiplicity == 0:
+        return np.array([])
 
 def calculate_eccentricity_limbach_vectorized_bank(multiplicity):
     """
     Draw eccentricities using test bank of Limbach & Turner 2014 CDFs
     Params: multiplicity of system (array of ints)
     Returns: np.array of eccentricity values with length==multiplicity
+    (under permanent construction)
     """
 
     if multiplicity==1:
