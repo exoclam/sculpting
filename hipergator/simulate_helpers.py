@@ -10,9 +10,11 @@ import scipy.stats as stats
 import random
 from scipy.stats import gaussian_kde, loguniform
 from math import lgamma
+import config
 
 #path = '/blue/sarahballard/c.lam/sculpting2/'
 path = '/Users/chrislam/Desktop/sculpting/' # new computer has different username
+limbach = config.limbach
 
 """
 # Create sample bank of eccentricities to draw from so that you don't call np.searchsorted a bajillion times
@@ -89,9 +91,14 @@ def compute_prob_vectorized(df, m, b, cutoff): # adapted from Ballard et al in p
                 df['iso_age']*1e9 > cutoff, b+m*(np.log10(cutoff)-8))))
     """
 
-    df['prob_intact'] = np.where(
-            ((df['iso_age']*1e9 > 1e8) & (df['iso_age']*1e9 <= cutoff)), b+m*(np.log10(df['iso_age'])-8), np.where(
-                df['iso_age']*1e9 > cutoff, b+m*(np.log10(cutoff)-8), b))
+    try:
+        df['prob_intact'] = np.where(
+                ((df['iso_age']*1e9 > 1e8) & (df['iso_age']*1e9 <= cutoff)), b+m*(np.log10(df['iso_age'])-8), np.where(
+                    df['iso_age']*1e9 > cutoff, b+m*(np.log10(cutoff)-8), b))
+    except:
+        df['prob_intact'] = np.where(
+                ((df['Age']*1e9 > 1e8) & (df['Age']*1e9 <= cutoff)), b+m*(np.log10(df['Age'])-8), np.where(
+                    df['Age']*1e9 > cutoff, b+m*(np.log10(cutoff)-8), b))
 
     # handle impossible probabilities
     df['prob_intact'] = np.where(
@@ -146,7 +153,8 @@ def calculate_eccentricity_limbach(multiplicity):
     Returns: np.array of eccentricity values with length==multiplicity
     """
     # for drawing eccentricities using Limbach & Turner 2014 CDFs relating e to multiplicity
-    limbach = pd.read_csv(path+'limbach_cdfs.txt', engine='python', header=0, sep='\s{2,20}') # space-agnostic separator
+    #limbach = pd.read_csv(path+'limbach_cdfs.txt', engine='python', header=0, sep='\s{2,20}') # space-agnostic separator
+    #limbach = config.limbach 
 
     values = np.random.rand(multiplicity) # draw an eccentricity per planet
     if multiplicity==1:
