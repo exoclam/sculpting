@@ -13,8 +13,8 @@ from math import lgamma
 import config
 import matplotlib.pyplot as plt
 
-#path = '/blue/sarahballard/c.lam/sculpting2/'
-path = '/Users/chrislam/Desktop/sculpting/' # new computer has different username
+path = '/blue/sarahballard/c.lam/sculpting2/'
+#path = '/Users/chrislam/Desktop/sculpting/' # new computer has different username
 limbach = config.limbach
 
 """
