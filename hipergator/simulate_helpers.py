@@ -11,6 +11,7 @@ import random
 from scipy.stats import gaussian_kde, loguniform
 from math import lgamma
 import config
+import matplotlib.pyplot as plt
 
 #path = '/blue/sarahballard/c.lam/sculpting2/'
 path = '/Users/chrislam/Desktop/sculpting/' # new computer has different username
@@ -59,6 +60,10 @@ def au_to_cgs(distance):
 
 
 ### helper main functions
+def pad(lam):
+    lam += [0.] * (6 - len(lam)) # pad with zeros to match length of k
+    return lam
+
 def compute_prob(x, m, b, cutoff): # adapted from Ballard et al in prep, log version
     # calculate probability of intact vs disrupted
     
@@ -428,14 +433,14 @@ def calculate_sn(P, rp, rs, cdpp, tdur, unit_test_flag=False):
     rp = solar_radius_to_au(rp) # earth_radius_to_au when not using Matthias's test set
     rs = solar_radius_to_au(rs)
     #print(P, rp, rs, cdpp, tdur)
-    
+
     factor1 = np.sqrt(tobs*f0/np.array(P)) # this is the number of transits
     delta = 1e6*(rp/rs)**2 # convert from parts per unit to ppm
     cdpp_eff = cdpp * np.sqrt(tcdpp/tdur)
     #print("CDPP ingredients: ", cdpp, tcdpp, tdur)
     factor2 = delta/cdpp_eff
     sn = factor1 * factor2
-    
+
     if unit_test_flag==True:
         if np.isnan(sn)==True:
             sn = 0
@@ -452,6 +457,7 @@ def calculate_sn_vectorized(P, rp, rs, cdpp, tdur, unit_test_flag=False):
     
     Returns: S/N
     """
+
     tobs = 365*3.5 # days; time spanned observing the target; set to 3.5 years, or the length of Kepler mission
     f0 = 0.92 # fraction of time spent actually observing and not doing spacecraft things
     tcdpp = 0.25 # days; using CDPP for 6 hour transit durations; could change to be more like Earth transiting Sun?
@@ -459,19 +465,12 @@ def calculate_sn_vectorized(P, rp, rs, cdpp, tdur, unit_test_flag=False):
     rs = solar_radius_to_au(rs)
     #print(P, rp, rs, cdpp, tdur)
     factor1 = tobs*f0/P.apply(lambda x: np.sqrt(x)) # this is the number of transits
-    delta = 1e6*(rp/rs)**2 # convert from parts per unit to ppm
+    delta = ((rp/rs)**2) # convert from parts per unit to ppm
     cdpp_eff = cdpp * tcdpp/tdur.apply(lambda x: np.sqrt(x))
     #print("CDPP ingredients: ", cdpp, tcdpp, tdur)
     factor2 = delta/cdpp_eff
     sn = factor1 * factor2
-    """
-    print("periods: ", P, P.apply(lambda x: np.sqrt(x)))
-    print("tdurs: ", tdur, tdur.apply(lambda x: np.sqrt(x)))
-    print("tcdpp: ", tcdpp)
-    print("cdpp_eff: ", cdpp, cdpp_eff)
-    print("sn")
-    quit()
-    """
+
     if unit_test_flag==True:
         if np.isnan(sn)==True:
             sn = 0

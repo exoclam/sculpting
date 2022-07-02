@@ -21,6 +21,7 @@ import matplotlib.pyplot as plt
 from simulate_transit import * 
 from simulate_helpers import *
 import matplotlib.pyplot as plt
+from operator import add
 #from simulate_transit import model_van_eylen
 
 ### variables for HPG
@@ -30,12 +31,14 @@ import matplotlib.pyplot as plt
 ### variables for local
 path = '/Users/chrislam/Desktop/sculpting/' # new computer has different username
 berger_kepler = pd.read_csv(path+'berger_kepler_stellar_fgk.csv') # crossmatched with Gaia via Bedell, previously berger_kepler_stellar17.csv
+#berger_kepler = pd.read_csv(path+'berger_kepler_stellar_k.csv') # K dwarfs only, for comparison with Moriarty & Ballard
 pnum = pd.read_csv(path+'pnum_plus_cands_fgk.csv') # previously pnum_plus_cands.csv
 pnum = pnum.drop_duplicates(['kepid'])
 k = pnum.koi_count.value_counts() 
+print(k)
 #k = pd.Series([len(berger_kepler)-np.sum(k), 244, 51, 12, 8, 1]) 
-k = pd.Series([len(berger_kepler)-np.sum(k), 833, 134, 38, 15, 5])
-k = [833, 134, 38, 15, 5, 0]
+#k = pd.Series([len(berger_kepler)-np.sum(k), 833, 134, 38, 15, 5])
+#k = [833, 134, 38, 15, 5, 0]
 G = 6.6743e-8 # gravitational constant in cgs
 
 def prior_grid_logslope(cube, ndim, nparams, gi_m, gi_b, gi_c):
@@ -167,40 +170,94 @@ def unit_test(k, model_flag):
     b = 0.3 # 0.9
     cutoff = 6.309573e+08 # 1e9 # yrs
     frac = 0.9 # fraction of FGK dwarfs with planets
+
+    m = -0.4 # -3.65967387e-01  
+    b = 8.88934417e-01  
+    cutoff = 5e9 # 6.31628913e+09  
+    frac = 0.35
     cube = [m, b, cutoff]
     print("cube: ", cube)
 
     #berger_kepler_planets = model_van_eylen(berger_kepler.iso_age, berger_kepler, model_flag, cube)
     berger_kepler_planets = model_vectorized(berger_kepler, model_flag, cube)
-    print(len(berger_kepler_planets.kepid.unique()))
-
-    transiters_berger_kepler = berger_kepler_planets.loc[berger_kepler_planets['transit_status']==1]
-    print(len(transiters_berger_kepler.kepid.unique()))    
-
-    """
-    ## use this when applying frac pre-hoc
-    #transit_multiplicity = list(transiters_berger_kepler.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid)
-    transit_multiplicity = berger_kepler_planets.groupby('kepid').sum('transit_status').groupby('transit_status').count().reset_index()
-    print(transit_multiplicity)
-    print(transit_multiplicity.teff.sum())
-    """
+    transiters_berger_kepler = berger_kepler_planets.loc[berger_kepler_planets['transit_status']==1] # use this for 1+ bins only
+    geom_transiters_berger_kepler = berger_kepler_planets.loc[berger_kepler_planets['geom_transit_status']==1] # use this for 1+ bins only
 
     ## use this when applying frac post-hoc
-    transit_multiplicity = list(frac*transiters_berger_kepler.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid)
+    if len(cube)==3:
+        transit_multiplicity = list(frac*transiters_berger_kepler.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid)
+        geom_transit_multiplicity = list(frac*geom_transiters_berger_kepler.groupby('kepid').count()['geom_transit_status'].reset_index().groupby('geom_transit_status').count().reset_index().kepid)
+    elif len(cube)==4:
+        transit_multiplicity = list(berger_kepler_planets.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid)
+        geom_transit_multiplicity = list(berger_kepler_planets.groupby('kepid').count()['geom_transit_status'].reset_index().groupby('geom_transit_status').count().reset_index().kepid)
+
     #print([0.] * (len(k) - len(transit_multiplicity)))
-    transit_multiplicity += [0.] * (len(k) - len(transit_multiplicity)) # pad with zeros to match length of k
+    #transit_multiplicity += [0.] * (len(k) - len(transit_multiplicity)) # pad with zeros to match length of k
+    #geom_transit_multiplicity += [0.] * (len(k) - len(geom_transit_multiplicity)) # pad with zeros to match length of k
+    transit_multiplicity = pad(transit_multiplicity)
+    geom_transit_multiplicity = pad(geom_transit_multiplicity)
     #berger_kepler_planets.to_csv('transits02_04_04_25.csv')
-    print(len(berger_kepler_planets.kepid.unique())-np.sum(transit_multiplicity))
-    transit_multiplicity.insert(0, len(berger_kepler_planets.kepid.unique())-np.sum(transit_multiplicity))
-    print(transit_multiplicity)
-    quit()
+
+    # pad zero bin in front
+    #print(len(berger_kepler_planets.kepid.unique())-np.sum(transit_multiplicity))
+    #transit_multiplicity.insert(0, len(berger_kepler_planets.kepid.unique())-np.sum(transit_multiplicity))
+    #print(transit_multiplicity)
+    #quit()
 
     # make sure the 6-multiplicity bin is filled in with zero and ignore zero-bin
     #k[6] = 0
     #k = k[1:].reset_index()[0]
     print("transit multiplicity: ", transit_multiplicity)
+    print("geometric transit multiplicity: ", geom_transit_multiplicity)
     print("k: ", list(k))
-    quit()
+
+    # get intact and disrupted fractions (combine them later to get fraction of systems w/o planets)
+    intact = berger_kepler_planets.loc[berger_kepler_planets.intact_flag=='intact']
+    disrupted = berger_kepler_planets.loc[berger_kepler_planets.intact_flag=='disrupted']
+    intact_frac_of_hosts = len(intact.kepid.unique())/len(berger_kepler_planets.kepid.unique())
+    disrupted_frac_of_hosts = len(disrupted.kepid.unique())/len(berger_kepler_planets.kepid.unique())
+    intact_frac_overall = intact_frac_of_hosts*frac
+    disrupted_frac_overall = disrupted_frac_of_hosts*frac 
+    print("intact frac: ", intact_frac_of_hosts)
+    print("disrupted frac: ", disrupted_frac_of_hosts)
+    print("intact frac overall: ", intact_frac_overall)
+    print("disrupted frac overall: ", disrupted_frac_overall)
+
+
+    # get transit and geometric transit multiplicities for intact vs disrupted populations
+    transiters_intact = intact.loc[intact['transit_status']==1] # use this for 1+ bins only
+    transiters_disrupted = disrupted.loc[disrupted['transit_status']==1] # use this for 1+ bins only
+    geom_transiters_intact = intact.loc[intact['geom_transit_status']==1] # use this for 1+ bins only
+    geom_transiters_disrupted = disrupted.loc[disrupted['geom_transit_status']==1] # use this for 1+ bins only
+
+    if len(cube)==3:
+        transit_multiplicity_intact = list(frac*transiters_intact.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid)
+        transit_multiplicity_disrupted = list(frac*transiters_disrupted.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid)
+        geom_transit_multiplicity_intact = list(frac*geom_transiters_intact.groupby('kepid').count()['geom_transit_status'].reset_index().groupby('geom_transit_status').count().reset_index().kepid)
+        geom_transit_multiplicity_disrupted = list(frac*geom_transiters_disrupted.groupby('kepid').count()['geom_transit_status'].reset_index().groupby('geom_transit_status').count().reset_index().kepid)
+    elif len(cube)==4:
+        transit_multiplicity_intact = list(intact.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid)
+        transit_multiplicity_disrupted = list(disrupted.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid)
+        geom_transit_multiplicity_intact = list(intact.groupby('kepid').count()['geom_transit_status'].reset_index().groupby('geom_transit_status').count().reset_index().kepid)
+        geom_transit_multiplicity_disrupted = list(disrupted.groupby('kepid').count()['geom_transit_status'].reset_index().groupby('geom_transit_status').count().reset_index().kepid)
+
+    #transit_multiplicity_intact += [0.] * (len(k) - len(transit_multiplicity_intact)) # pad with zeros to match length of k
+    #transit_multiplicity_disrupted += [0.] * (len(k) - len(transit_multiplicity_disrupted)) # pad with zeros to match length of k
+    #geom_transit_multiplicity_intact += [0.] * (len(k) - len(geom_transit_multiplicity_intact)) # pad with zeros to match length of k
+    #geom_transit_multiplicity_disrupted += [0.] * (len(k) - len(geom_transit_multiplicity_disrupted)) # pad with zeros to match length of k
+    transit_multiplicity_intact = pad(transit_multiplicity_intact)
+    transit_multiplicity_disrupted = pad(transit_multiplicity_disrupted)
+    geom_transit_multiplicity_intact = pad(geom_transit_multiplicity_intact)
+    geom_transit_multiplicity_disrupted = pad(geom_transit_multiplicity_disrupted)
+
+    print("")
+    print("intact transit multiplicity: ", transit_multiplicity_intact)
+    print("disrupted transit multiplicity: ", transit_multiplicity_disrupted)
+    print("intact geometric transit multiplicity: ", geom_transit_multiplicity_intact)
+    print("disrupted geometric transit multiplicity: ", geom_transit_multiplicity_disrupted)
+
+    return transit_multiplicity, geom_transit_multiplicity, transit_multiplicity_intact, transit_multiplicity_disrupted, geom_transit_multiplicity_intact, geom_transit_multiplicity_disrupted
+
     # calculate log likelihood
     logL = better_loglike(list(transit_multiplicity), list(k))
     print("logL: ", logL)
@@ -229,14 +286,58 @@ def unit_test(k, model_flag):
 #### Compare transit multiplicity outputs of model_van_eylen vs model_vectorized
 sanity_check('limbach-hybrid')
 quit()
+"""
 
 #### Test vectorized approach for time
 start = datetime.now()
-unit_test(k, 'limbach-hybrid')
-end = datetime.now()
-print("ELAPSED: ", end-start)
-quit()
-"""
+iterations = 10
+transit_multiplicities = []
+geom_transit_multiplicities = []
+transit_multiplicities_intact = []
+geom_transit_multiplicities_intact = []
+transit_multiplicities_disrupted = []
+geom_transit_multiplicities_disrupted = []
+
+for i in range(iterations):
+    transit_multiplicity, geom_transit_multiplicity, transit_multiplicity_intact, transit_multiplicity_disrupted, geom_transit_multiplicity_intact, geom_transit_multiplicity_disrupted = unit_test(k, 'limbach-hybrid')
+    transit_multiplicities.append(transit_multiplicity)
+    geom_transit_multiplicities.append(geom_transit_multiplicity)
+    transit_multiplicities_intact.append(transit_multiplicity_intact)
+    geom_transit_multiplicities_intact.append(geom_transit_multiplicity_intact)
+    transit_multiplicities_disrupted.append(transit_multiplicity_disrupted)
+    geom_transit_multiplicities_disrupted.append(geom_transit_multiplicity_disrupted)
+
+print(np.mean(transit_multiplicities, axis=0))
+print(np.mean(geom_transit_multiplicities, axis=0))
+
+plt.fill_between(np.arange(7)[1:], np.min(transit_multiplicities, axis=0), np.max(transit_multiplicities, axis=0), alpha=0.5, color='orange')
+plt.scatter(np.arange(7)[1:], np.mean(transit_multiplicities, axis=0), c='orange', label='detected')
+plt.fill_between(np.arange(7)[1:], np.min(geom_transit_multiplicities, axis=0), np.max(geom_transit_multiplicities, axis=0), alpha=0.5, color='k')
+plt.scatter(np.arange(7)[1:], np.mean(geom_transit_multiplicities, axis=0), c='k', label='geometric')
+plt.xlabel('transit multiplicity')
+plt.ylabel('number of stars')
+plt.legend()
+plt.show()
+
+plt.fill_between(np.arange(7)[1:], np.min(transit_multiplicities_intact, axis=0), np.max(transit_multiplicities_intact, axis=0), alpha=0.5, color='orange')
+plt.scatter(np.arange(7)[1:], np.mean(transit_multiplicities_intact, axis=0), c='orange', label='detected')
+plt.fill_between(np.arange(7)[1:], np.min(geom_transit_multiplicities_intact, axis=0), np.max(geom_transit_multiplicities_intact, axis=0), alpha=0.5, color='k')
+plt.scatter(np.arange(7)[1:], np.mean(geom_transit_multiplicities_intact, axis=0), c='k', label='geometric')
+plt.xlabel('transit multiplicity')
+plt.ylabel('number of stars')
+plt.legend()
+plt.show()
+
+plt.fill_between(np.arange(7)[1:], np.min(transit_multiplicities_disrupted, axis=0), np.max(transit_multiplicities_disrupted, axis=0), alpha=0.5, color='orange')
+plt.scatter(np.arange(7)[1:], np.mean(transit_multiplicities_disrupted, axis=0), c='orange', label='detected')
+plt.fill_between(np.arange(7)[1:], np.min(geom_transit_multiplicities_disrupted, axis=0), np.max(geom_transit_multiplicities_disrupted, axis=0), alpha=0.5, color='k')
+plt.scatter(np.arange(7)[1:], np.mean(geom_transit_multiplicities_disrupted, axis=0), c='k', label='geometric')
+plt.xlabel('transit multiplicity')
+plt.ylabel('number of stars')
+plt.legend()
+plt.show()
+
+#"""
 
 #### Compare CDPP sampling methods
 
@@ -268,6 +369,10 @@ for row in range(2):
 
 #plt.savefig('ecc-inc-00-05.png')
 """
+
+end = datetime.now()
+print("ELAPSED: ", end-start)
+quit()
 
 #### Run unit test to plot AMD over {ecc, inc}
 

@@ -228,13 +228,12 @@ def calculate_transit_vectorized(P, star_radius, planet_radius, e, incl, omega, 
     Returns:
     - Probabilities of detection: Numpy array
     - Transit statuses: Numpy array
+    - Geometric transit statuses: Numpy array
     - Transit multiplicities (lambdas for calculating logLs): Numpy array
     - S/N ratios: Numpy array
     """
 
     #print(P, star_radius, planet_radius, e, incl, omega, star_mass, cdpps)
-    prob_detections = []
-    transit_statuses = []
     transit_multiplicities = []
     #planet_radius = 2.       
     
@@ -244,6 +243,10 @@ def calculate_transit_vectorized(P, star_radius, planet_radius, e, incl, omega, 
     # calculate impact parameters; distance units in solar radii
     b = calculate_impact_parameter_vectorized(star_radius, a, e, incl, omega, angle_flag)
     
+    # label geometric transits
+    #geom_transit_statuses = np.zeros(len(b))
+    geom_transit_statuses = (np.abs(b) <= 1) # booleans
+
     # make sure arrays have explicitly float elements
     planet_radius = planet_radius.astype(float)
     star_radius = star_radius.astype(float)
@@ -261,30 +264,28 @@ def calculate_transit_vectorized(P, star_radius, planet_radius, e, incl, omega, 
     
     # calculate SN based on Eqn 4 in Christiansen et al 2012
     sn = calculate_sn_vectorized(P, planet_radius, star_radius, cdpps, tdur, unit_test_flag=False)
+
     #print("number of nonzero SN: ", len(np.where(sn>0)[0]))
     
     # calculate Fressin detection probability based on S/N
     #ts2 = [1 if sn_elt >= 7.1 else 0 for sn_elt in sn] # S/N threshold before Fressin et al 2013
     #prob_detection = np.array([0.1*(sn_elt-6) for sn_elt in sn]) # S/N threshold using Fressin et al 2013
     #prob_detection[np.isnan(prob_detection)] = 0 # replace NaNs with zeros
-    prob_detection = 0.1*(sn-6) # vectorize
-    #print(prob_detection.apply(pd.Series).stack().reset_index(drop=True))
-
-    prob_detection = np.where(prob_detection < 0., 0., prob_detection) # replace negative probs with zeros
+    prob_detections = 0.1*(sn-6) # vectorize
+    prob_detections = np.where(prob_detections < 0., 0., prob_detections) # replace negative probs with zeros
     # actually, replace all probabilities under 5% with 5% to avoid over-penalizing models which terminate at 0% too early
-    prob_detection = np.where(prob_detection > 1, 1, prob_detection) # replace probs > 1 with just 1
-    prob_detections.append(prob_detection)
-    #print(prob_detections)
-    #quit()
+    prob_detections = np.where(prob_detections > 1., 1., prob_detections) # replace probs > 1 with just 1
 
     # sample transit status and multiplicity based on Fressin detection probability
     #transit_status = [ts1_elt * ts2_elt for ts1_elt, ts2_elt in zip(ts1, ts2)]
-    transit_status = [np.random.choice([1, 0], p=[pd, 1-pd]) for pd in prob_detection]
-    transit_statuses.append(transit_status)
+    #transit_statuses = [np.random.choice([1, 0], p=[pd, 1-pd]) for pd in prob_detections] # 100x slower than current version
+    transit_statuses = np.random.binomial(1, prob_detections) # n needs to be 1
+    transit_statuses = transit_statuses * geom_transit_statuses
+    
     #transit_multiplicities.append(len([ts for ts in transit_status if ts == 1]))
     #transit_multiplicities.append(len([param for param in b if np.abs(param) <= 1.]))
 
-    return prob_detections, transit_statuses, sn
+    return prob_detections, geom_transit_statuses, transit_statuses, sn
 
 def model_direct_draw(cube):
     """
@@ -548,17 +549,16 @@ def model_vectorized(df, model_flag, cube):
         second_term2 = berger_kepler_planets['mutual_incl'].apply(lambda x: np.cos(x))
         berger_kepler_planets['second_terms'] = 1 - second_term1*second_term2
 
-        prob_detections, transit_statuses, sn = calculate_transit_vectorized(berger_kepler_planets.P, 
+        prob_detections, geom_transit_statuses, transit_statuses, sn = calculate_transit_vectorized(berger_kepler_planets.P, 
                                 berger_kepler_planets.iso_rad, berger_kepler_planets.planet_radius,
                                 berger_kepler_planets.ecc, 
                                 berger_kepler_planets.incl, 
                                 berger_kepler_planets.omega, berger_kepler_planets.iso_mass,
                                 berger_kepler_planets.rrmscdpp06p0, angle_flag=True) # was np.ones(len(berger_kepler_planets))*131.4
         
-        berger_kepler_planets['transit_status'] = transit_statuses[0]
-        berger_kepler_planets['prob_detections'] = prob_detections[0]
-        #print(berger_kepler_planets['transit_status'])
-        #print(berger_kepler_planets.loc[berger_kepler_planets.transit_status > 0])
+        berger_kepler_planets['transit_status'] = transit_statuses
+        berger_kepler_planets['prob_detections'] = prob_detections
+        berger_kepler_planets['geom_transit_status'] = geom_transit_statuses
         berger_kepler_planets['sn'] = sn
         
         """
@@ -670,17 +670,16 @@ def model_vectorized(df, model_flag, cube):
         second_term2 = berger_kepler_planets['mutual_incl'].apply(lambda x: np.cos(x))
         berger_kepler_planets['second_terms'] = 1 - second_term1*second_term2
 
-        prob_detections, transit_statuses, sn = calculate_transit_vectorized(berger_kepler_planets.P, 
+        prob_detections, geom_transit_statuses, transit_statuses, sn = calculate_transit_vectorized(berger_kepler_planets.P, 
                                 berger_kepler_planets.iso_rad, berger_kepler_planets.planet_radius,
                                 berger_kepler_planets.ecc, 
                                 berger_kepler_planets.incl, 
                                 berger_kepler_planets.omega, berger_kepler_planets.iso_mass,
                                 berger_kepler_planets.rrmscdpp06p0, angle_flag=True) # was np.ones(len(berger_kepler_planets))*131.4
 
-        berger_kepler_planets['transit_status'] = transit_statuses[0]
-        berger_kepler_planets['prob_detections'] = prob_detections[0]
-        #print(berger_kepler_planets['transit_status'])
-        #print(berger_kepler_planets.loc[berger_kepler_planets.transit_status > 0])
+        berger_kepler_planets['transit_status'] = transit_statuses
+        berger_kepler_planets['prob_detections'] = prob_detections
+        berger_kepler_planets['geom_transit_status'] = geom_transit_statuses
         berger_kepler_planets['sn'] = sn
 
         """
