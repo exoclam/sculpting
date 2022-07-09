@@ -23,18 +23,18 @@ from simulate_helpers import *
 #from simulate_transit import model_van_eylen
 
 ### variables for HPG
-#task_id = os.getenv('SLURM_ARRAY_TASK_ID')
-#path = '/blue/sarahballard/c.lam/sculpting2/'
+task_id = os.getenv('SLURM_ARRAY_TASK_ID')
+path = '/blue/sarahballard/c.lam/sculpting2/'
 
 ### variables for local
-path = '/Users/chrislam/Desktop/sculpting/' # new computer has different username
+#path = '/Users/chrislam/Desktop/sculpting/' # new computer has different username
 berger_kepler = pd.read_csv(path+'berger_kepler_stellar_fgk.csv') # crossmatched with Gaia via Bedell, previously berger_kepler_stellar17.csv
-pnum = pd.read_csv(path+'pnum_plus_cands_fgk.csv') # previously pnum_plus_cands.csv
-pnum = pnum.drop_duplicates(['kepid'])
-k = pnum.koi_count.value_counts() 
+#pnum = pd.read_csv(path+'pnum_plus_cands_fgk.csv') # previously pnum_plus_cands.csv
+#pnum = pnum.drop_duplicates(['kepid'])
+#k = pnum.koi_count.value_counts() 
 #k = pd.Series([len(berger_kepler)-np.sum(k), 244, 51, 12, 8, 1]) 
 #k = pd.Series([len(berger_kepler)-np.sum(k), 833, 134, 38, 15, 5])
-k = pd.Series([833, 134, 38, 15, 5, 0])
+k = np.array([864, 138, 38, 15, 5, 0])
 G = 6.6743e-8 # gravitational constant in cgs
 
 def prior_grid_logslope(cube, ndim, nparams, gi_m, gi_b, gi_c):
@@ -52,6 +52,7 @@ def prior_grid_logslope(cube, ndim, nparams, gi_m, gi_b, gi_c):
 	cube[1] = np.linspace(0,1,11)[gi_b]
 	#cube[2] = np.logspace(1e8,1e10,11)
 	cube[2] = np.logspace(8,10,11)[gi_c] # in Ballard et al in prep, they use log(yrs) instead of drawing yrs from logspace
+
 	return cube
 
 def better_loglike(lam, k):
@@ -109,18 +110,15 @@ def loglike_direct_draw_better(cube, ndim, nparams, k):
 def unit_test(k, model_flag):
 
 	### use fiducial values of m, b, cutoff, and frac for now to test eccentricity models
-	# good model: -0.2, 0.4, 0.4e10, 0.25
-	m = -2.
+	m = -0.25
 	b = 0.5
-	cutoff = 0.4e10 # yrs
-	frac = 0.25 # fraction of FGK dwarfs with planets
+	cutoff = 1e10 # yrs
+	frac = 0.4 # fraction of FGK dwarfs with planets
 	cube = [m, b, cutoff, frac]
-	print("cube: ", cube)
 
 	berger_kepler_planets = model_van_eylen(berger_kepler.iso_age, berger_kepler, model_flag, cube)
 	transiters_berger_kepler = berger_kepler_planets.loc[berger_kepler_planets['transit_status']==1]
-	transit_multiplicity = frac*transiters_berger_kepler.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid
-	berger_kepler_planets.to_csv('transits02_04_04_25.csv')
+	transit_multiplicity = transiters_berger_kepler.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid
 
 	# make sure the 6-multiplicity bin is filled in with zero and ignore zero-bin
 	k[6] = 0
@@ -129,7 +127,7 @@ def unit_test(k, model_flag):
 	print("k: ", list(k))
 
 	# calculate log likelihood
-	logL = better_loglike(list(transit_multiplicity), list(k))
+	logL = better_loglike(list(transit_multiplicity*0.4), list(k))
 	print("logL: ", logL)
 	print("old logL: ", better_loglike([466.8, 72.8, 14.8, 13.2, 7.6, 2.4], k))
 	print("total: ", len(berger_kepler_planets))
@@ -175,9 +173,11 @@ def main(cube, ndim, nparams, k):
 	"""
 
 	# ad hoc logic bc HPG ran out of memory and I don't want to redo already-finished simulations
-	done = glob(path+'simulations2/limbach-hybrid/transits*')
-
-	for gi_m in range(11):
+	done = glob(path+'simulations2/fixed-detection/transits*')
+	print("DONE: ", done)
+	#output_filename_pre = '/blue/sarahballard/c.lam/sculpting2/simulations2/limbach-hybrid/transits'
+	output_filename_pre = '/blue/sarahballard/c.lam/sculpting2/simulations2/fixed-detection/transits'
+	for gi_m in range(11): # THIS IS TEMPORARY. REMOVE THIS SUBSET AFTER FINISHING SIMULATE_FLAT JOB
 		for gi_b in range(11):
 			for gi_c in range(11):
 				
@@ -188,89 +188,52 @@ def main(cube, ndim, nparams, k):
 				#flag = redundancy_check(cube[0], cube[1], cube[2])
 				flag = True
 				if flag==False: # do one more simulation, then exit cutoff range
-					for i in range(3):
-						output_filename = '/blue/sarahballard/c.lam/sculpting2/simulations2/limbach-hybrid/transits'+str(gi_m)+'_'+str(gi_b)+'_'+str(gi_c)+'_'+str(i)+'.csv'
+					for i in range(10): # IDEALLY AT LEAST TEN. DO 3 FOR NOW BC OF THE THESIS.
+						output_filename = output_filename_pre+str(gi_m)+'_'+str(gi_b)+'_'+str(gi_c)+'_'+str(i)+'.csv'
 						if output_filename not in done: # only run if simulation is not yet done
-							berger_kepler_planets = model_van_eylen(berger_kepler.iso_age, berger_kepler, 'limbach-hybrid', cube)
+							berger_kepler_planets = model_vectorized(berger_kepler, 'limbach-hybrid', cube)
 							berger_kepler_planets.to_csv(output_filename)
 					break 
 				else:
-					for i in range(3):
-						output_filename = '/blue/sarahballard/c.lam/sculpting2/simulations2/limbach-hybrid/transits'+str(gi_m)+'_'+str(gi_b)+'_'+str(gi_c)+'_'+str(i)+'.csv'
-						if output_filename not in done: # only run if simulation is not yet done
-							berger_kepler_planets = model_van_eylen(berger_kepler.iso_age, berger_kepler, 'limbach-hybrid', cube)
+					for i in range(10):
+						output_filename = output_filename_pre+str(gi_m)+'_'+str(gi_b)+'_'+str(gi_c)+'_'+str(i)+'.csv'
+						if output_filename in done:
+							print(output_filename)
+						elif output_filename not in done: # only run if simulation is not yet done
+							berger_kepler_planets = model_vectorized(berger_kepler, 'limbach-hybrid', cube)
 							berger_kepler_planets.to_csv(output_filename)
+							#print("JUST DID IT")
 
 	return
 
-#main(cube, ndim, nparams, k)
-#quit()
+main(cube, ndim, nparams, k)
 
+"""
 #### Run unit test to plot and compare different eccentricity distribution assumptions
-"""
-model = 0.3*np.array([3998, 524, 134, 80, 36, 10])
-logL = better_loglike(model, list(k))
-print(logL)
-print(model)
-print(k)
-quit()
-"""
 
-fig, axes = plt.subplots(2, 3, figsize=(25, 16)) # 16, 9
+fig, axes = plt.subplots(2, 3, figsize=(16, 9))
 models = ['rayleigh', 'beta', 'half-Gaussian', 'mixed', 'limbach', 'limbach-hybrid']
 plot_i = 0
 for row in range(2):
 	for column in range(3):
 		model_flag = models[plot_i]
 		ecc, incl = unit_test(k, model_flag)
-		#quit()
+		quit()
 		ax = plt.subplot2grid((2,3), (row,column))
 		im = ax.hexbin(ecc, incl, yscale='log', xscale='log', extent=(-3, 0, -2, 2))
 		fig2 = sns.kdeplot(np.array(ecc), np.array(incl), legend = True, levels=[0.68, 0.95], colors=['black','red'])
 		#plt.hexbin(berger_kepler_planets.ecc, np.log10(berger_kepler_planets.incl*180/np.pi))	
 		ax.set_ylim(1e-2, 1e2)
 		ax.set_xlim(1e-3, 1e0)
-		ax.set_title(model_flag, fontsize=24)
-		ax.tick_params(axis='both', labelsize=16)
-		if plot_i==5:
-			ax.set_xlabel('eccentricity', fontsize=20)
+		ax.set_title(model_flag)
+		if plot_i==3:
+			ax.set_xlabel('eccentricity')
 		if plot_i==0:
-			ax.set_ylabel('inclination', fontsize=20)
-		cbar = fig.colorbar(im, ax=ax)
-		cbar.ax.tick_params(labelsize=14)
-		if plot_i==2:
-			cbar.set_label(label='hex bin density',size=20, labelpad=2)
+			ax.set_ylabel('inclination')
+		fig.colorbar(im, ax=ax)
 		#plt.savefig('ecc-inc-limbach-00-005.png')
 
 		plot_i += 1
 
-plt.savefig('ecc-inc-210-05.png', bbox_inches='tight')
-plt.show()
-quit()
-
-fig, axes = plt.subplots(2, 3, figsize=(25, 16)) # 16, 9
-models = ['rayleigh', 'beta', 'half-Gaussian', 'mixed', 'limbach', 'limbach-hybrid']
-plot_i = 0
-for row in range(2):
-	for column in range(3):
-		model_flag = models[plot_i]
-		ecc, incl = unit_test(k, model_flag)
-		#quit()
-		ax = plt.subplot2grid((2,3), (row,column))
-		im = ax.hexbin(ecc, incl, yscale='log', xscale='log', extent=(-3, 0, -2, 2))
-		fig2 = sns.kdeplot(np.array(ecc), np.array(incl), legend = True, levels=[0.68, 0.95], colors=['black','red'])
-		#plt.hexbin(berger_kepler_planets.ecc, np.log10(berger_kepler_planets.incl*180/np.pi))	
-		ax.set_ylim(1e-2, 1e2)
-		ax.set_xlim(1e-3, 1e0)
-		ax.set_title(model_flag, fontsize=24)
-		ax.tick_params(axis='both', labelsize=14)
-		if plot_i==5:
-			ax.set_xlabel('eccentricity', fontsize=18)
-		if plot_i==0:
-			ax.set_ylabel('inclination', fontsize=18)
-		fig.colorbar(im, ax=ax).set_label(label='hex bin density',size=18)
-		#plt.savefig('ecc-inc-limbach-00-005.png')
-
-		plot_i += 1
-
-plt.savefig('ecc-inc-00-05.png')
+#plt.savefig('ecc-inc-00-05.png')
+"""
