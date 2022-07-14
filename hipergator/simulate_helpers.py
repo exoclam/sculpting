@@ -46,6 +46,9 @@ def p_to_a(P, star_mass):
 def solar_radius_to_au(radius):
     return 0.00465047*radius
 
+def solar_radius_to_earth_radius(radius):
+    return 109.076*radius
+
 def earth_radius_to_au(radius):
     return 4.26352e-5*radius
 
@@ -461,12 +464,16 @@ def calculate_sn_vectorized(P, rp, rs, cdpp, tdur, unit_test_flag=False):
     tobs = 365*3.5 # days; time spanned observing the target; set to 3.5 years, or the length of Kepler mission
     f0 = 0.92 # fraction of time spent actually observing and not doing spacecraft things
     tcdpp = 0.25 # days; using CDPP for 6 hour transit durations; could change to be more like Earth transiting Sun?
-    rp = solar_radius_to_au(rp) # earth_radius_to_au when not using Matthias's test set
+    rp = earth_radius_to_au(rp) # earth_radius_to_au when not using Matthias's test set
     rs = solar_radius_to_au(rs)
     #print(P, rp, rs, cdpp, tdur)
-    factor1 = tobs*f0/P.apply(lambda x: np.sqrt(x)) # this is the number of transits
-    delta = ((rp/rs)**2) # convert from parts per unit to ppm
-    cdpp_eff = cdpp * tcdpp/tdur.apply(lambda x: np.sqrt(x))
+    #print(tdur.astype(float).dtypes)
+    #print(np.nanmedian(tdur.astype(float)))
+    #factor1 = (tobs*f0/P).apply(lambda x: np.sqrt(x)) # this is the number of transits
+    factor1 = np.sqrt(tobs*f0/P.astype(float))
+    delta = 1e6*((rp/rs)**2) # convert from parts per unit to ppm
+    #cdpp_eff = cdpp * (tcdpp/tdur).apply(lambda x: np.sqrt(x))
+    cdpp_eff = cdpp * np.sqrt(tcdpp/tdur.astype(float))
     #print("CDPP ingredients: ", cdpp, tcdpp, tdur)
     factor2 = delta/cdpp_eff
     sn = factor1 * factor2

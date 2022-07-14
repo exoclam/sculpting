@@ -178,8 +178,47 @@ def unit_test(k, model_flag):
     cube = [m, b, cutoff]
     print("cube: ", cube)
 
-    #berger_kepler_planets = model_van_eylen(berger_kepler.iso_age, berger_kepler, model_flag, cube)
-    berger_kepler_planets = model_vectorized(berger_kepler, model_flag, cube)
+    for j in range(30):
+
+        #berger_kepler_planets = model_van_eylen(berger_kepler.iso_age, berger_kepler, model_flag, cube)
+        berger_kepler_planets = model_vectorized(berger_kepler, model_flag, cube)
+        #plt.hist(berger_kepler_planets.sn)
+        #plt.show()
+
+        # plot detected ratio as a function of SNR, and of period
+        bins = np.linspace(2, 300, 20) # period
+        #bins = np.linspace(0, 100, 50) # S/N
+        print("periods: ", bins)
+        berger_kepler_planets['digitized_P'] = np.digitize(berger_kepler_planets.P, bins=bins)
+        #berger_kepler_planets['digitized_sn'] = np.digitize(berger_kepler_planets.sn, bins=bins)
+        #print(np.sort(berger_kepler_planets['digitized_P'].unique()))
+        #bin_means = [np.nanmean(berger_kepler_planets.loc[berger_kepler_planets.digitized_P == i].sn) for i in np.sort(berger_kepler_planets.digitized_P.unique())]
+        #print("mean SNs: ", bin_means)
+    
+        detected = []
+        for i in np.sort(berger_kepler_planets.digitized_P.unique()):
+            sub = berger_kepler_planets.loc[berger_kepler_planets.digitized_P == i]
+
+            transiters_berger_kepler = sub.loc[sub['transit_status']==1] # use this for 1+ bins only
+            geom_transiters_berger_kepler = sub.loc[sub['geom_transit_status']==1] # use this for 1+ bins only
+
+            transit_multiplicity = list(frac*transiters_berger_kepler.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid)
+            geom_transit_multiplicity = list(frac*geom_transiters_berger_kepler.groupby('kepid').count()['geom_transit_status'].reset_index().groupby('geom_transit_status').count().reset_index().kepid)
+        
+            transit_multiplicity = np.array(transit_multiplicity)
+            geom_transit_multiplicity = np.array(geom_transit_multiplicity)
+            #print(i, transit_multiplicity, geom_transit_multiplicity)
+            detected.append(np.sum(transit_multiplicity)/np.sum(geom_transit_multiplicity))
+
+
+        print(bins, detected)
+        print(len(bins), len(detected))
+        plt.scatter(bins[:-1], detected)
+    plt.ylabel('detection rate')
+    plt.xlabel('period [days]')
+    plt.show()
+    quit()
+
     transiters_berger_kepler = berger_kepler_planets.loc[berger_kepler_planets['transit_status']==1] # use this for 1+ bins only
     geom_transiters_berger_kepler = berger_kepler_planets.loc[berger_kepler_planets['geom_transit_status']==1] # use this for 1+ bins only
 
@@ -190,6 +229,10 @@ def unit_test(k, model_flag):
     elif len(cube)==4:
         transit_multiplicity = list(berger_kepler_planets.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid)
         geom_transit_multiplicity = list(berger_kepler_planets.groupby('kepid').count()['geom_transit_status'].reset_index().groupby('geom_transit_status').count().reset_index().kepid)
+
+    transit_multiplicity = np.array(transit_multiplicity)
+    geom_transit_multiplicity = np.array(geom_transit_multiplicity)
+    print("detected ratios: ", transit_multiplicity/geom_transit_multiplicity)
 
     #print([0.] * (len(k) - len(transit_multiplicity)))
     #transit_multiplicity += [0.] * (len(k) - len(transit_multiplicity)) # pad with zeros to match length of k
@@ -290,7 +333,7 @@ quit()
 
 #### Test vectorized approach for time
 start = datetime.now()
-iterations = 10
+iterations = 5
 transit_multiplicities = []
 geom_transit_multiplicities = []
 transit_multiplicities_intact = []
