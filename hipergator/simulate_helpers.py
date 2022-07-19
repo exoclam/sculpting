@@ -101,11 +101,11 @@ def compute_prob_vectorized(df, m, b, cutoff): # adapted from Ballard et al in p
 
     try:
         df['prob_intact'] = np.where(
-                ((df['iso_age']*1e9 > 1e8) & (df['iso_age']*1e9 <= cutoff)), b+m*(np.log10(df['iso_age'])-8), np.where(
+                ((df['iso_age']*1e9 > 1e8) & (df['iso_age']*1e9 <= cutoff)), b+m*(np.log10(df['iso_age']*1e9)-8), np.where(
                     df['iso_age']*1e9 > cutoff, b+m*(np.log10(cutoff)-8), b))
-    except:
+    except: # for asteroseismic ages
         df['prob_intact'] = np.where(
-                ((df['Age']*1e9 > 1e8) & (df['Age']*1e9 <= cutoff)), b+m*(np.log10(df['Age'])-8), np.where(
+                ((df['Age']*1e9 > 1e8) & (df['Age']*1e9 <= cutoff)), b+m*(np.log10(df['Age']*1e9)-8), np.where(
                     df['Age']*1e9 > cutoff, b+m*(np.log10(cutoff)-8), b))
 
     # handle impossible probabilities
