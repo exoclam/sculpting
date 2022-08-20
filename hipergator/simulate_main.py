@@ -173,10 +173,10 @@ def main(cube, ndim, nparams, k):
 	"""
 
 	# ad hoc logic bc HPG ran out of memory and I don't want to redo already-finished simulations
-	done = glob(path+'simulations2/fixed-detection/transits*')
+	done = glob(path+'simulations2/fixed-detection5/transits*')
 	print("DONE: ", done)
 	#output_filename_pre = '/blue/sarahballard/c.lam/sculpting2/simulations2/limbach-hybrid/transits'
-	output_filename_pre = '/blue/sarahballard/c.lam/sculpting2/simulations2/fixed-detection/transits'
+	output_filename_pre = '/blue/sarahballard/c.lam/sculpting2/simulations2/fixed-detection5/transits'
 	for gi_m in range(11): # THIS IS TEMPORARY. REMOVE THIS SUBSET AFTER FINISHING SIMULATE_FLAT JOB
 		for gi_b in range(11):
 			for gi_c in range(11):
@@ -195,14 +195,47 @@ def main(cube, ndim, nparams, k):
 							berger_kepler_planets.to_csv(output_filename)
 					break 
 				else:
-					for i in range(10):
+					for i in range(30):
 						output_filename = output_filename_pre+str(gi_m)+'_'+str(gi_b)+'_'+str(gi_c)+'_'+str(i)+'.csv'
 						if output_filename in done:
-							print(output_filename)
+							pass
 						elif output_filename not in done: # only run if simulation is not yet done
 							berger_kepler_planets = model_vectorized(berger_kepler, 'limbach-hybrid', cube)
 							berger_kepler_planets.to_csv(output_filename)
-							#print("JUST DID IT")
+							print("JUST DID IT: ", output_filename)
+
+	return
+
+def main_bank():
+	"""
+	For each of the three main hyperparams, I make 50 simulations (50000 total simulations). I use the original way of sampling eccentricities.
+	I output each simulation to a folder and never run them again. The I/O for calculating logLs will be worth not having to re-run simulations.
+	For each of the 50K resulting lambdas, I create 10 of varying fraction of systems with planets (the fourth hyperparam).
+	I run separate code to compute logLs for each 4-hyperparam combination and plot that as I have done before.
+	I do the same, now using the Rayleigh-Limbach hybrid eccentricity distribution. 
+
+	Eventually, I do the same using pymultinest. A man can dream.
+
+	Params: 
+	- cube: [m, b, cutoff]
+	- ndim: number of dimensions, will be 4 instead of 3 for pymultinest
+	- nparams: number of parameters, will be 4 instead of 3 for pymultinest
+	- k: ground truth transit multiplicity (Pandas Series)
+	"""
+
+	# ad hoc logic bc HPG ran out of memory and I don't want to redo already-finished simulations
+	#done = glob(path+'simulations2/fixed-detection/transits*')
+	#print("DONE: ", done)
+	#output_filename_pre = '/blue/sarahballard/c.lam/sculpting2/simulations2/limbach-hybrid/transits'
+	output_filename_pre = '/blue/sarahballard/c.lam/sculpting2/simulations2/bank/transits'
+	for i in range(100): # every 0.01 intact fraction
+		prob_intact = 0.01*i
+
+		for j in range(60): # do 60; then, for each model, draw 30 from the bank associated with the intact fraction closest to the model's
+			output_filename = output_filename_pre+str(i)+'_'+str(j)+'.csv'
+
+			berger_kepler_planets = model_vectorized_bank(berger_kepler, 'limbach-hybrid', prob_intact)
+			berger_kepler_planets.to_csv(output_filename)
 
 	return
 

@@ -704,6 +704,133 @@ def model_vectorized(df, model_flag, cube):
         """
         return berger_kepler_planets
 
+def model_vectorized_bank(df, model_flag, prob_intact):
+
+    ### planet ###
+    r_planet = 2. # Earth radii
+    m_planet = 5. # Earth masses; from Chen & Kipping 2016
+
+    # assign intact probability to each star
+    df['prob_intact'] = prob_intact
+    #print(len(df.loc[df.iso_age > 2])) 
+    #print(len(df.loc[np.round(df['prob_intact'], 3)==0.140])) # should be same as above, where fraction changes depending on age vs cutoff
+
+    # generate midplane per star
+    df['midplanes'] = np.random.uniform(-np.pi/2, np.pi/2, len(df))
+
+    # assign intact flag
+    """
+    print(len(df.prob_intact), len(df.loc[df.prob_intact.isna()]))
+    plt.hist(df.prob_intact)
+    plt.show()
+    quit()
+    """
+    df['intact_flag'] = df.prob_intact.apply(lambda x: assign_intact_flag(x))
+    #df['intact_flag'] = assign_intact_flag(df.prob_intact)
+    #np.random.choice(['intact', 'disrupted'], p=[np.array(df.prob_intact), 1-np.array(df.prob_intact)])
+
+    # assign system-level inclination spread based on intact flag
+    df['sigma'] = np.where(df.intact_flag=='intact', np.pi/90, np.pi/22.5)
+
+    # assign number of planets per system based on intact flag
+    #df['num_planets'] = np.where(df.intact_flag=='intact', random.choice([5, 6]), random.choice([1, 2])) # WRONG. This assigns ALL to 5 or 6 and 1 or 2
+    df['num_planets'] = df.intact_flag.apply(lambda x: assign_num_planets(x))
+
+    # draw period from loguniform distribution from 2 to 300 days
+    df['P'] = df.num_planets.apply(lambda x: np.array(loguniform.rvs(2, 300, size=x)))
+    #df['P'] = loguniform.rvs(2,300,size=df.num_planets)
+
+    # draw inclinations from Gaussian distribution centered on midplane (invariable plane)
+    #df['incl'] = df.apply(lambda x, y, z: draw_inclinations_vectorized(x, y, z))
+    df['incl'] = df.apply(lambda x: draw_inclinations_vectorized(x['midplanes'], x['sigma'], x['num_planets']), axis=1)
+
+    # obtain mutual inclinations for plotting to compare {e, i} distributions
+    df['mutual_incl'] = df['midplanes'] - df['incl']
+
+    # draw eccentricity
+    if (model_flag=='limbach-hybrid') | (model_flag=='limbach'):
+        # for drawing eccentricities using Limbach & Turner 2014 CDFs relating e to multiplicity
+        #limbach = pd.read_csv(path+'limbach_cdfs.txt', engine='python', header=0, sep='\s{2,20}') # space-agnostic separator
+        df['ecc'] = df.num_planets.apply(lambda x: draw_eccentricity_van_eylen_vectorized(model_flag, x, limbach))
+    else:
+        df['ecc'] = df.num_planets.apply(lambda x: draw_eccentricity_van_eylen_vectorized(model_flag, x))
+
+    # draw longitudes of periastron
+    df['omega'] = df.num_planets.apply(lambda x: np.random.uniform(0, 2*np.pi, x))
+
+    df['planet_radius'] = r_planet # Earth radii
+    df['planet_mass'] = m_planet # Earth masses
+
+    ###### EXPLODE ON 'P' COLUMN TO GET AROUND NUMPY ERRORS FOR COLUMNS THAT ARE LISTS OF LISTS ########
+    #berger_kepler_planets = df.explode('P')
+    #print(berger_kepler_planets)
+    #berger_kepler_planets = df.explode('P', '')
+    #print(berger_kepler_planets)
+    berger_kepler_planets = df.apply(pd.Series.explode)
+    #print(berger_kepler_planets)
+
+    """
+    # AMDs
+    lambda_k_temps = G*solar_mass_to_cgs(berger_kepler_planets['iso_mass'])*au_to_cgs(p_to_a(berger_kepler_planets['P'], berger_kepler_planets.iso_mass)).astype(float)
+    berger_kepler_planets['lambda_ks'] = earth_mass_to_cgs(berger_kepler_planets['planet_mass']) * np.sqrt(lambda_k_temps)
+    berger_kepler_planets['second_terms'] = 1 - (np.sqrt(1 - (berger_kepler_planets['ecc'])**2))*np.cos(berger_kepler_planets['mutual_incl'])
+
+    prob_detections, transit_statuses, transit_multiplicities, sn = calculate_transit_me_with_amd(berger_kepler_planets.P, 
+                            berger_kepler_planets.iso_rad, berger_kepler_planets.planet_radius,
+                            berger_kepler_planets.ecc, 
+                            berger_kepler_planets.incl, 
+                            berger_kepler_planets.omega, berger_kepler_planets.iso_mass,
+                            berger_kepler_planets.rrmscdpp06p0, angle_flag=True) # was np.ones(len(berger_kepler_planets))*131.4
+
+    berger_kepler_planets['transit_status'] = transit_statuses[0]
+    berger_kepler_planets['prob_detections'] = prob_detections[0]
+    transit_multiplicities += [0.] * (len(k) - len(transit_multiplicities)) # pad with zeros to match length of k
+    berger_kepler_planets['transit_multiplicities'] = transit_multiplicities #[0]
+    berger_kepler_planets['sn'] = sn
+    """
+
+    # AMDs
+    lambda_k_temps = G*solar_mass_to_cgs(berger_kepler_planets['iso_mass'])*au_to_cgs(p_to_a(berger_kepler_planets['P'], berger_kepler_planets.iso_mass)).astype(float)
+    berger_kepler_planets['lambda_ks'] = earth_mass_to_cgs(berger_kepler_planets['planet_mass']) * np.sqrt(lambda_k_temps)
+    second_term1 = 1 - (berger_kepler_planets['ecc'])**2
+    second_term1 = second_term1.apply(lambda x: np.sqrt(x))
+    second_term2 = berger_kepler_planets['mutual_incl'].apply(lambda x: np.cos(x))
+    berger_kepler_planets['second_terms'] = 1 - second_term1*second_term2
+
+    prob_detections, geom_transit_statuses, transit_statuses, sn = calculate_transit_vectorized(berger_kepler_planets.P, 
+                            berger_kepler_planets.iso_rad, berger_kepler_planets.planet_radius,
+                            berger_kepler_planets.ecc, 
+                            berger_kepler_planets.incl, 
+                            berger_kepler_planets.omega, berger_kepler_planets.iso_mass,
+                            berger_kepler_planets.rrmscdpp06p0, angle_flag=True) # was np.ones(len(berger_kepler_planets))*131.4
+    
+    berger_kepler_planets['transit_status'] = transit_statuses
+    berger_kepler_planets['prob_detections'] = prob_detections
+    berger_kepler_planets['geom_transit_status'] = geom_transit_statuses
+    berger_kepler_planets['sn'] = sn
+    
+    """
+    # AMDs
+    lambda_k_temps = G*solar_mass_to_cgs(df['iso_mass'].apply(pd.to_numeric))*au_to_cgs(p_to_a(df['P'].apply(pd.to_numeric), df.iso_mass.apply(pd.to_numeric)))
+    df['lambda_ks'] = earth_mass_to_cgs(df['planet_mass']) * (lambda_k_temps)**0.5
+    print(df['mutual_incl'])
+    print(np.cos(df.mutual_incl.values))
+    df['second_terms'] = 1 - ((1 - (df['ecc'])**2)**0.5)*np.cos(df['mutual_incl'])
+
+    prob_detections, transit_statuses, transit_multiplicities, sn = calculate_transit_me_with_amd(df.P, 
+                            df.iso_rad, df.planet_radius,
+                            df.ecc, 
+                            df.incl, 
+                            df.omega, df.iso_mass,
+                            df.rrmscdpp06p0, angle_flag=True)
+    
+    df['transit_status'] = transit_statuses[0]
+    df['prob_detections'] = prob_detections[0]
+    df['transit_multiplicities'] = transit_multiplicities[0]
+    df['sn'] = sn
+    """
+    return berger_kepler_planets
+
 def model_van_eylen(star_age, df, model_flag, cube):
     """
     Enrich berger_kepler DataFrame with planet parameters like ecc, incl, etc.

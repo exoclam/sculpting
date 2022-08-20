@@ -31,14 +31,17 @@ from operator import add
 ### variables for local
 path = '/Users/chrislam/Desktop/sculpting/' # new computer has different username
 berger_kepler = pd.read_csv(path+'berger_kepler_stellar_fgk.csv') # crossmatched with Gaia via Bedell, previously berger_kepler_stellar17.csv
+print(berger_kepler.loc[berger_kepler.kepid==9458613].iso_age)
+adfadf
+
 #berger_kepler = pd.read_csv(path+'berger_kepler_stellar_k.csv') # K dwarfs only, for comparison with Moriarty & Ballard
 pnum = pd.read_csv(path+'pnum_plus_cands_fgk.csv') # previously pnum_plus_cands.csv
 pnum = pnum.drop_duplicates(['kepid'])
-k = pnum.koi_count.value_counts() 
-print(k)
+#k = pnum.groupby('kepid').count()['koi_count']
+#print(k)
 #k = pd.Series([len(berger_kepler)-np.sum(k), 244, 51, 12, 8, 1]) 
 #k = pd.Series([len(berger_kepler)-np.sum(k), 833, 134, 38, 15, 5])
-#k = [833, 134, 38, 15, 5, 0]
+k = [864, 138, 38, 15, 5, 0]
 G = 6.6743e-8 # gravitational constant in cgs
 
 def prior_grid_logslope(cube, ndim, nparams, gi_m, gi_b, gi_c):
@@ -141,7 +144,7 @@ def sanity_check(model_flag):
     """
     transiters_berger_kepler = berger_kepler_planets.loc[berger_kepler_planets['transit_status']==1]
     transit_multiplicity = list(frac*transiters_berger_kepler.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid)
-    transit_multiplicity += [0.] * (6 - len(transit_multiplicity)) # pad with zeros to match length of k
+    transit_multiplicity += [0.] * (7 - len(transit_multiplicity)) # pad with zeros to match length of k
     #berger_kepler_planets.to_csv('transits02_04_04_25.csv')
     
     # make sure the 6-multiplicity bin is filled in with zero and ignore zero-bin
@@ -153,7 +156,7 @@ def sanity_check(model_flag):
     berger_kepler_planets = model_van_eylen(berger_kepler.iso_age, berger_kepler, model_flag, cube)
     transiters_berger_kepler = berger_kepler_planets.loc[berger_kepler_planets['transit_status']==1]
     transit_multiplicity = list(frac*transiters_berger_kepler.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid)
-    transit_multiplicity += [0.] * (6 - len(transit_multiplicity)) # pad with zeros to match length of k
+    transit_multiplicity += [0.] * (7 - len(transit_multiplicity)) # pad with zeros to match length of k
     #berger_kepler_planets.to_csv('transits02_04_04_25.csv')
     
     # make sure the 6-multiplicity bin is filled in with zero and ignore zero-bin
@@ -175,10 +178,16 @@ def unit_test(k, model_flag):
     b = 8.88934417e-01  
     cutoff = 5e9 # 6.31628913e+09  
     frac = 0.35
+
+    m = -0.4 # -3.65967387e-01  
+    b = 0.5
+    cutoff = 4e9 # 6.31628913e+09  
+    frac = 0.3
     cube = [m, b, cutoff]
     print("cube: ", cube)
 
-    for j in range(30):
+    """
+    for j in range(3):
 
         #berger_kepler_planets = model_van_eylen(berger_kepler.iso_age, berger_kepler, model_flag, cube)
         berger_kepler_planets = model_vectorized(berger_kepler, model_flag, cube)
@@ -218,6 +227,9 @@ def unit_test(k, model_flag):
     plt.xlabel('period [days]')
     plt.show()
     quit()
+    """
+
+    berger_kepler_planets = model_vectorized(berger_kepler, model_flag, cube)
 
     transiters_berger_kepler = berger_kepler_planets.loc[berger_kepler_planets['transit_status']==1] # use this for 1+ bins only
     geom_transiters_berger_kepler = berger_kepler_planets.loc[berger_kepler_planets['geom_transit_status']==1] # use this for 1+ bins only
@@ -230,15 +242,17 @@ def unit_test(k, model_flag):
         transit_multiplicity = list(berger_kepler_planets.groupby('kepid').count()['transit_status'].reset_index().groupby('transit_status').count().reset_index().kepid)
         geom_transit_multiplicity = list(berger_kepler_planets.groupby('kepid').count()['geom_transit_status'].reset_index().groupby('geom_transit_status').count().reset_index().kepid)
 
+    """
     transit_multiplicity = np.array(transit_multiplicity)
     geom_transit_multiplicity = np.array(geom_transit_multiplicity)
     print("detected ratios: ", transit_multiplicity/geom_transit_multiplicity)
-
+    """
+    
     #print([0.] * (len(k) - len(transit_multiplicity)))
     #transit_multiplicity += [0.] * (len(k) - len(transit_multiplicity)) # pad with zeros to match length of k
     #geom_transit_multiplicity += [0.] * (len(k) - len(geom_transit_multiplicity)) # pad with zeros to match length of k
-    transit_multiplicity = pad(transit_multiplicity)
-    geom_transit_multiplicity = pad(geom_transit_multiplicity)
+    ###transit_multiplicity = pad(transit_multiplicity)
+    ###geom_transit_multiplicity = pad(geom_transit_multiplicity)
     #berger_kepler_planets.to_csv('transits02_04_04_25.csv')
 
     # pad zero bin in front
@@ -265,7 +279,7 @@ def unit_test(k, model_flag):
     print("disrupted frac: ", disrupted_frac_of_hosts)
     print("intact frac overall: ", intact_frac_overall)
     print("disrupted frac overall: ", disrupted_frac_overall)
-
+    quit()
 
     # get transit and geometric transit multiplicities for intact vs disrupted populations
     transiters_intact = intact.loc[intact['transit_status']==1] # use this for 1+ bins only
